@@ -36,6 +36,7 @@ export default /** @type {import("@web/test-runner").TestRunnerConfig} */ ({
         'test/unit/compas-wizards/*.test.ts',
         'test/unit/Plugging.test.ts',
         'test/unit/locamation/*.test.ts',
+        'test/unit/dsb/*.test.ts',
       ],
     },
     {

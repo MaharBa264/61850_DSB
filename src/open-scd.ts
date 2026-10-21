@@ -46,6 +46,7 @@ import { createLogEvent } from './compas-services/foundation.js';
 import { languages, loader } from './translations/loader.js';
 import { registerOscdPlugins, OscdPluginSrc } from './oscd-plugins.js';
 import { registerCompasPlugins, CompasPluginSrc } from './compas-plugins.js';
+import { registerDsbPlugins, DsbPluginSrc } from './dsb/dsb-plugins.js';
 
 const LNODE_LIB_DOC_ID = 'fc55c46d-c109-4ccd-bf66-9f1d0e135689';
 
@@ -227,6 +228,7 @@ export class OpenSCD extends LitElement {
     this.checkAppVersion();
     registerOscdPlugins();
     registerCompasPlugins();
+    registerDsbPlugins();
     this.loadPlugins();
 
     this.unsubscribers.push(this.editor.subscribe(() => this.editCount++));
@@ -463,7 +465,8 @@ export class OpenSCD extends LitElement {
 
     const isOscdPlugin = Object.values(OscdPluginSrc).includes(plugin.src as any);
     const isCompasPlugin = Object.values(CompasPluginSrc).includes(plugin.src as any);
-    if (isOscdPlugin || isCompasPlugin) {
+    const isDsbPlugin = Object.values(DsbPluginSrc).includes(plugin.src as any);
+    if (isOscdPlugin || isCompasPlugin || isDsbPlugin) {
       const tag = pluginTag(plugin.src);
       return {
         ...plugin,

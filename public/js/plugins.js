@@ -449,5 +449,14 @@ export const officialPlugins = [
     activeByDefault: false,
     kind: 'editor',
     requireDoc: true,
+  },
+  // --- DSB (61850_DSB): plugins propios, ver src/dsb ---
+  {
+    name: 'Editor GOOSE (DSB)',
+    src: '/dsb-plugins/editors/GooseGraph.js',
+    icon: 'hub',
+    activeByDefault: true,
+    kind: 'editor',
+    requireDoc: true,
   }
 ];
