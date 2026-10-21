@@ -5,6 +5,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
+# Borra un PID viejo (p. ej. creado desde una shell con etiqueta SELinux incorrecta); igual que el nginx estandar
+ExecStartPre=-/usr/bin/rm -f /run/dsb-nginx.pid
 ExecStartPre=/usr/sbin/nginx -t -c /etc/dsb/nginx.conf -g 'daemon off;'
 ExecStart=/usr/sbin/nginx -c /etc/dsb/nginx.conf -g 'daemon off;'
 ExecReload=/bin/kill -s HUP $MAINPID

@@ -93,3 +93,9 @@ Repetir los pasos 1 y 2 (el script es idempotente). Para volver atrás:
 - **No probado**: `install-rocky.sh` y `nginx.conf` en un Rocky 8.10 real (no hay acceso desde donde se desarrolló;
   tampoco se pudo correr `nginx -t`). Ante cualquier error, `journalctl -u dsb-nginx -n 30` indica el motivo.
 - Si un firewall de red entre tu PC y el servidor bloquea el 8095, habrá que habilitarlo ahí (no depende del Rocky).
+
+## Problemas conocidos
+- **`open() "/run/dsb-nginx.pid" failed (13: Permission denied)`** (SELinux): el archivo PID quedó con una etiqueta incorrecta.
+  `sudo rm -f /run/dsb-nginx.pid && sudo systemctl reset-failed dsb-nginx && sudo systemctl start dsb-nginx`.
+  (Corregido en el instalador y en el servicio; solo afecta a instalaciones anteriores al commit que lo arregla.)
+- Diagnóstico general: `systemctl status dsb-nginx -l`, `journalctl -u dsb-nginx -n 30`, `sudo ausearch -m avc -ts recent`.

@@ -62,6 +62,9 @@ fi
 
 # 7) Servicio
 nginx -t -c "$CONF" -g 'daemon off;'
+# 'nginx -t' crea el archivo PID con la etiqueta SELinux de ESTA shell; el servicio (httpd_t) no podria usarlo
+rm -f /run/dsb-nginx.pid
+systemctl reset-failed dsb-nginx 2>/dev/null || true
 systemctl daemon-reload
 systemctl enable dsb-nginx >/dev/null
 systemctl restart dsb-nginx
