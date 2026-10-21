@@ -36,15 +36,20 @@ git fetch upstream
 git merge upstream/main   # los conflictos esperables son solo los 3 puntos de enganche
 ```
 
-## Despliegue previsto en Rocky 8.10 (PLAN — aún no probado)
+## Despliegue en Rocky 8.10
 
-- Compilar con `pnpm install && pnpm build` (Node 22 + pnpm 11) en CI o en una máquina de build; en el
-  servidor solo se publica el contenido de `dist/`.
-- Servir con nginx (paquete del propio Rocky) o con el contenedor de `distribution/Dockerfile` vía
-  podman (viene en Rocky 8). `nginx/default.conf.template` es la configuración de referencia.
-- Nota: `pnpm install` descarga plugins externos desde `transnetbw-openscd.github.io` en el postinstall;
-  el servidor de build necesita salida a esa URL (o hay que vendorizarlos).
-- Backend futuro (usuarios/proyectos): detrás del mismo nginx, en `/api`.
+Ver [`deploy/README.md`](../../deploy/README.md). Resumen: el workflow `DSB Build` genera `dsb-dist.tar.gz`
+en cada push a `main`; `deploy/install-rocky.sh` lo publica en nginx. App 100 % estática por ahora.
+(Los scripts aún no se probaron en un Rocky real.)
+
+## Contexto operativo (dato del usuario)
+
+- Cada RTU se instala en una red capa 2 independiente (salvo contadas excepciones). Por lo tanto, MAC/APPID
+  GOOSE repetidos entre RTUs **no** son un problema; los validadores de duplicados deben acotarse **por subred**.
+- IEDs objetivo: Siemens DIGSI 4 y 5 (7SJ8xx, 7UTxxx, 7SAxx), ABB REF615/REU615/REX615, Hitachi RET670/RET650,
+  y merging units de esas marcas. RTUs Schneider Saitel CPU866e (ICD plantilla `TEMPLATE`).
+- Archivos de referencia analizados: SCD de ABB PCM600 (ETSL, 32 IEDs) e ICD Saitel. Son datos de la red de EDESAL:
+  **no se versionan en el repo**.
 
 ## Hoja de ruta (propuesta)
 
@@ -53,4 +58,6 @@ git merge upstream/main   # los conflictos esperables son solo los 3 puntos de e
 3. [ ] Vista MMS (reportes/datasets) con el mismo enfoque de bloques
 4. [ ] Unifilar editable
 5. [ ] Backend: usuarios, proyectos, versiones, colaboración
-6. [ ] Validaciones de ingeniería (ej. confRev, APPID/MAC duplicados, FCDA inexistentes)
+6. [ ] Validaciones de ingeniería (ej. confRev, APPID/MAC/IP duplicados **por subred**, FCDA inexistentes)
+7. [ ] Instanciador de RTU desde ICD plantilla (nombre, IP, MAC/APPID, sustitución de GoID/rptID)
+8. [ ] Soporte SV / merging units (requiere ICD/SCD de Siemens e Hitachi para verificar)

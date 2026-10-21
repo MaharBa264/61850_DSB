@@ -1,0 +1,44 @@
+# DSB — genera el paquete desplegable (dist) en cada push a main o a pedido.
+# Descargar desde la pestaña Actions > (corrida) > Artifacts > dsb-dist
+name: DSB Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          cache: true
+
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 #v6
+        with:
+          node-version: '24.x'
+
+      - name: Build
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+
+      - name: Empaquetar
+        run: |
+          echo "${GITHUB_SHA}" > dist/VERSION
+          tar -czf dsb-dist.tar.gz -C dist .
+          ls -la dsb-dist.tar.gz
+
+      - name: Subir artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsb-dist
+          path: dsb-dist.tar.gz
+          retention-days: 30
