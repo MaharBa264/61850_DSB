@@ -1,6 +1,7 @@
 # Despliegue de DSB en Rocky Linux 8.10 (172.17.1.170)
 
-La app es 100 % estática (HTML/JS): en el servidor solo hace falta **nginx**. No requiere Node, Java ni base de datos.
+La app es 100 % estática (HTML/JS): para *ejecutarla* solo hace falta **nginx** (sin Java ni base de datos). Node.js solo se necesita si
+se compila en el servidor (opción A); con la opción B no hace falta.
 
 **Puerto: 8095** (el 80 ya lo usa otra aplicación). Se instala un nginx **dedicado** (servicio `dsb-nginx`, config en `/etc/dsb/`) que
 **no modifica** `/etc/nginx` ni el servicio existente. Antes de instalar, ver si el puerto está libre:
