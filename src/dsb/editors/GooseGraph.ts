@@ -212,7 +212,8 @@ export default class DsbGooseGraphPlugin extends LitElement {
           <dt>GSEControl</dt><dd>${l.cbName}${l.unresolved ? html` <b class="warn">no existe en el SCL</b>` : ''}</dd>
           ${c
             ? html`<dt>DataSet</dt><dd>${c.datSet ?? '—'} (${c.fcdaCount} FCDA)</dd>
-                <dt>APPID</dt><dd>${c.appId ?? '—'}</dd>
+                <dt>GoID</dt><dd>${c.appId ?? '—'}</dd>
+                <dt>APPID (L2)</dt><dd>${c.appIdL2 ?? '—'}</dd>
                 <dt>confRev</dt><dd>${c.confRev ?? '—'}</dd>
                 <dt>MAC</dt><dd>${c.mac ?? '—'}</dd>
                 <dt>VLAN</dt><dd>${c.vlanId ?? '—'} / prio ${c.vlanPriority ?? '—'}</dd>`
@@ -235,7 +236,7 @@ export default class DsbGooseGraphPlugin extends LitElement {
       return html`<aside>
         <h3>${n}</h3>
         <h4>Publica (${ctl.length} GSEControl)</h4>
-        <ul>${ctl.map(c => html`<li>${c.name} <small>${c.datSet ?? ''} · APPID ${c.appId ?? '—'}</small></li>`)}</ul>
+        <ul>${ctl.map(c => html`<li>${c.name} <small>${c.datSet ?? ''} · APPID ${c.appIdL2 ?? '—'}</small></li>`)}</ul>
         <h4>Suscribe a (${inn.length})</h4>
         <ul>${inn.map(x => html`<li>${x.publisher} · ${x.cbName} <small>${x.signals.length} señales</small></li>`)}</ul>
         <h4>Sus mensajes llegan a (${out.length})</h4>

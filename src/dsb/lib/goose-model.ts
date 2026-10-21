@@ -16,7 +16,10 @@ export interface GooseControl {
   /** Nombre del GSEControl */
   name: string;
   datSet: string | null;
+  /** Atributo GSEControl@appID (GoID). En ABB es el nombre del bloque; en otros fabricantes puede ser un texto libre */
   appId: string | null;
+  /** APPID de capa 2 (hex) tomado de Communication/.../GSE/Address/P[@type='APPID'] */
+  appIdL2: string | null;
   confRev: string | null;
   /** Dirección de comunicación (Communication/.../GSE), si existe */
   mac: string | null;
@@ -105,7 +108,7 @@ function extractControls(scl: ParentNode): GooseControl[] {
   // Direcciones de comunicación indexadas por ied+ldInst+cbName
   const gseAddr = new Map<
     string,
-    { mac: string | null; vlanId: string | null; vlanPriority: string | null }
+    { mac: string | null; appIdL2: string | null; vlanId: string | null; vlanPriority: string | null }
   >();
   scl.querySelectorAll('Communication > SubNetwork > ConnectedAP').forEach(ap => {
     const ied = ap.getAttribute('iedName');
@@ -119,6 +122,7 @@ function extractControls(scl: ParentNode): GooseControl[] {
         )?.textContent?.trim() ?? null;
       gseAddr.set(controlKey(ied, gse.getAttribute('ldInst'), cb), {
         mac: p('MAC-Address'),
+        appIdL2: p('APPID'),
         vlanId: p('VLAN-ID'),
         vlanPriority: p('VLAN-PRIORITY'),
       });
@@ -142,6 +146,7 @@ function extractControls(scl: ParentNode): GooseControl[] {
         const addr = gseAddr.get(controlKey(ied, ldInst, name)) ??
           gseAddr.get(controlKey(ied, null, name)) ?? {
             mac: null,
+            appIdL2: null,
             vlanId: null,
             vlanPriority: null,
           };
@@ -151,6 +156,7 @@ function extractControls(scl: ParentNode): GooseControl[] {
           name,
           datSet,
           appId: attr(gc, 'appID'),
+          appIdL2: addr.appIdL2,
           confRev: attr(gc, 'confRev'),
           mac: addr.mac,
           vlanId: addr.vlanId,
