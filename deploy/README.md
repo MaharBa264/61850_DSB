@@ -6,29 +6,67 @@ La app es 100 % estática (HTML/JS): en el servidor solo hace falta **nginx**. N
 **no modifica** `/etc/nginx` ni el servicio existente. Antes de instalar, ver si el puerto está libre:
 `ss -ltnp | grep :8095` (sin salida = libre; el script también lo comprueba y aborta si está ocupado).
 
-## 1. Obtener el paquete
+## Opción A (recomendada): clonar y compilar en el servidor
 
-GitHub genera `dsb-dist.tar.gz` en cada push a `main` (workflow **DSB Build**):
+Requiere que el servidor tenga **salida a internet** (GitHub y npm). Todo desde PowerShell, por SSH.
 
-1. Repo → pestaña **Actions** → corrida más reciente de *DSB Build* → **Artifacts → dsb-dist**.
-2. Descargar y descomprimir el ZIP que entrega GitHub: adentro está `dsb-dist.tar.gz`.
+```powershell
+ssh TU_USUARIO@172.17.1.170
+```
 
-> Alternativa sin GitHub Actions: en una máquina con internet, `pnpm install && pnpm build`, y
-> `tar -czf dsb-dist.tar.gz -C dist .` (el `pnpm install` descarga plugins externos desde la red).
-
-## 2. Copiar e instalar
-
-Desde una máquina de la LAN (PowerShell/Windows 10+ trae `scp`), con la carpeta `deploy/` del repo:
+**Preparar el servidor (una sola vez)**
 
 ```bash
-scp -r deploy dsb-dist.tar.gz usuario@172.17.1.170:/tmp/
-ssh usuario@172.17.1.170
+sudo dnf install -y git
+dnf module list nodejs            # ver qué streams hay; se necesita Node 22 o superior
+sudo dnf module enable -y nodejs:22 && sudo dnf install -y nodejs
+node -v                           # debe mostrar v22.x o mayor
+```
+
+Si `nodejs:22` no existe en ese listado, usar NodeSource:
+`sudo dnf module reset -y nodejs && curl -fsSL https://rpm.nodesource.com/setup_22.x | sudo bash - && sudo dnf install -y nodejs`
+
+**Clonar, compilar e instalar**
+
+```bash
+ss -ltnp | grep :8095             # sin salida = puerto libre
+git clone https://github.com/MaharBa264/61850_DSB.git
+cd 61850_DSB
+./deploy/build-and-install.sh
+```
+
+Tarda varios minutos la primera vez (descarga dependencias). Al terminar imprime la URL. Probar en el navegador:
+`http://172.17.1.170:8095/`
+
+**Actualizar más adelante** (cuando haya cambios nuevos en GitHub):
+
+```bash
+ssh TU_USUARIO@172.17.1.170
+cd ~/61850_DSB && ./deploy/build-and-install.sh
+```
+
+Si el servidor sale a internet por proxy: `export https_proxy=http://PROXY:PUERTO` antes de `git clone` y del script, y
+`npm config set proxy` / `https-proxy` para npm.
+
+## Opción B: si el servidor NO tiene internet
+
+El paquete se genera en GitHub (workflow **DSB Build**): repo → **Actions** → última corrida de *DSB Build* →
+**Artifacts → dsb-dist** (hay que iniciar sesión en GitHub). Descomprimir el ZIP: adentro está `dsb-dist.tar.gz`.
+También necesitás la carpeta `deploy/` (en el repo, "Code → Download ZIP", o un `git clone` en tu PC). Desde PowerShell:
+
+```powershell
+scp .\dsb-dist.tar.gz TU_USUARIO@172.17.1.170:/tmp/
+scp -r .\deploy TU_USUARIO@172.17.1.170:/tmp/
+ssh TU_USUARIO@172.17.1.170
 sudo bash /tmp/deploy/install-rocky.sh /tmp/dsb-dist.tar.gz
 ```
 
-El script: instala el paquete `nginx` (sin habilitar el servicio estándar), crea el servicio `dsb-nginx`, publica la app en
-`/var/www/dsb` de forma atómica (conserva las 3 versiones previas), etiqueta SELinux (incluido el permiso del puerto, con
-`semanage`), abre el puerto en firewalld y arranca el servicio. Otro puerto: `sudo DSB_PORT=8096 bash /tmp/deploy/install-rocky.sh ...`
+## Qué hace el instalador
+
+`install-rocky.sh` (lo llama la opción A) instala el paquete `nginx` (sin habilitar el servicio estándar), crea el servicio
+`dsb-nginx`, publica la app en `/var/www/dsb` de forma atómica (conserva las 3 versiones previas), etiqueta SELinux
+(incluido el permiso del puerto, con `semanage`), abre el puerto en firewalld y arranca el servicio.
+Otro puerto: `DSB_PORT=8096 ./deploy/build-and-install.sh`.
 
 ## 3. Verificar
 
