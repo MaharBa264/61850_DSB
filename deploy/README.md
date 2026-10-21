@@ -20,12 +20,13 @@ ssh TU_USUARIO@172.17.1.170
 ```bash
 sudo dnf install -y git
 dnf module list nodejs            # ver qué streams hay; se necesita Node 22 o superior
-sudo dnf module enable -y nodejs:22 && sudo dnf install -y nodejs
+sudo dnf module enable -y nodejs:22 && sudo dnf install -y nodejs npm
 node -v                           # debe mostrar v22.x o mayor
 ```
 
 Si `nodejs:22` no existe en ese listado, usar NodeSource:
 `sudo dnf module reset -y nodejs && curl -fsSL https://rpm.nodesource.com/setup_22.x | sudo bash - && sudo dnf install -y nodejs`
+(en Rocky 8, `npm` es un paquete aparte con el stream de AppStream: `nodejs npm`; NodeSource lo trae incluido)
 
 **Clonar, compilar e instalar**
 
@@ -36,7 +37,7 @@ cd 61850_DSB
 ./deploy/build-and-install.sh
 ```
 
-Tarda varios minutos la primera vez (descarga dependencias). Al terminar imprime la URL. Probar en el navegador:
+pnpm se instala solo en tu usuario (`~/.local`), sin `sudo` ni cambios globales. Tarda varios minutos la primera vez (descarga dependencias). Al terminar imprime la URL. Probar en el navegador:
 `http://172.17.1.170:8095/`
 
 **Actualizar más adelante** (cuando haya cambios nuevos en GitHub):
