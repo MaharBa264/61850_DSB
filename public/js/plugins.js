@@ -8,7 +8,7 @@ export const officialPlugins = [
     requireDoc: true,
   },
   {
-    name: 'Substation',
+    name: 'Subestación',
     src: '/oscd-plugins/editors/Substation.js',
     icon: 'margin',
     activeByDefault: true,
@@ -16,7 +16,7 @@ export const officialPlugins = [
     requireDoc: true,
   },
   {
-    name: 'Single Line Diagram',
+    name: 'Diagrama unifilar',
     src: '/oscd-plugins/editors/SingleLineDiagram.js',
     icon: 'edit',
     activeByDefault: true,
@@ -24,7 +24,7 @@ export const officialPlugins = [
     requireDoc: true,
   },
   {
-    name: 'Subscriber Message Binding (GOOSE)',
+    name: 'Enlace de mensajes de suscriptor (GOOSE)',
     src: '/oscd-plugins/editors/GooseSubscriberMessageBinding.js',
     icon: 'link',
     activeByDefault: false,
@@ -32,7 +32,7 @@ export const officialPlugins = [
     requireDoc: true,
   },
   {
-    name: 'Subscriber Data Binding (GOOSE)',
+    name: 'Enlace de datos de suscriptor (GOOSE)',
     src: '/oscd-plugins/editors/GooseSubscriberDataBinding.js',
     icon: 'link',
     activeByDefault: false,
@@ -40,7 +40,7 @@ export const officialPlugins = [
     requireDoc: true,
   },
   {
-    name: 'Subscriber Message Binding (SMV)',
+    name: 'Enlace de mensajes de suscriptor (SMV)',
     src: '/oscd-plugins/editors/SMVSubscriberMessageBinding.js',
     icon: 'link',
     activeByDefault: false,
@@ -48,7 +48,7 @@ export const officialPlugins = [
     requireDoc: true,
   },
   {
-    name: 'Subscriber Data Binding (SMV)',
+    name: 'Enlace de datos de suscriptor (SMV)',
     src: '/oscd-plugins/editors/SMVSubscriberDataBinding.js',
     icon: 'link',
     activeByDefault: false,
@@ -56,7 +56,7 @@ export const officialPlugins = [
     requireDoc: true,
   },
   {
-    name: 'Communication',
+    name: 'Comunicación',
     src: '/oscd-plugins/editors/Communication.js',
     icon: 'settings_ethernet',
     activeByDefault: true,
@@ -72,7 +72,7 @@ export const officialPlugins = [
     requireDoc: true,
   },
   {
-    name: 'Templates',
+    name: 'Plantillas',
     src: '/oscd-plugins/editors/Templates.js',
     icon: 'copy_all',
     activeByDefault: true,
@@ -80,7 +80,7 @@ export const officialPlugins = [
     requireDoc: true,
   },
   {
-    name: 'CoMPAS Versions',
+    name: 'Versiones CoMPAS',
     src: '/compas-plugins/compas-editors/CompasVersions.js',
     icon: 'copy_all',
     activeByDefault: true,
@@ -88,7 +88,7 @@ export const officialPlugins = [
     requireDoc: true,
   },
   {
-    name: 'Publisher',
+    name: 'Publicador',
     src: '/external-plugins/oscd-publisher/oscd-publisher.js',
     icon: 'publish',
     activeByDefault: true,
@@ -96,7 +96,7 @@ export const officialPlugins = [
     requireDoc: true,
   },
   {
-    name: 'Communication Explorer',
+    name: 'Explorador de comunicación',
     src: '/external-plugins/oscd-plugins/communication-explorer/0.0.32/index.js',
     icon: 'lan',
     activeByDefault: true,
@@ -104,7 +104,7 @@ export const officialPlugins = [
     requireDoc: true,
   },
   {
-    name: 'Template Generator',
+    name: 'Generador de plantillas',
     src: '/external-plugins/oscd-template-generator/oscd-template-generator.js',
     icon: 'copy_all',
     activeByDefault: true,
@@ -112,7 +112,7 @@ export const officialPlugins = [
     requireDoc: true,
   },
   {
-    name: 'Cleanup',
+    name: 'Limpieza',
     src: '/oscd-plugins/editors/Cleanup.js',
     icon: 'cleaning_services',
     activeByDefault: false,
@@ -120,7 +120,7 @@ export const officialPlugins = [
     requireDoc: true,
   },
   {
-    name: 'Subscribe (Later Binding)',
+    name: 'Suscripción (enlace tardío)',
     src: '/external-plugins/oscd-subscriber-later-binding/oscd-subscriber-later-binding.js',
     icon: 'link',
     activeByDefault: false,
@@ -128,7 +128,7 @@ export const officialPlugins = [
     requireDoc: true
   },
   {
-    name: 'Template Update',
+    name: 'Actualizar plantillas',
     src: '/external-plugins/scl-template-update/scl-template-update.js',
     icon: 'copy_all',
     activeByDefault: false,
@@ -136,7 +136,7 @@ export const officialPlugins = [
     requireDoc: true
   },
   {
-    name: 'Bay Template',
+    name: 'Plantilla de campo',
     src: '/external-plugins/scl-bay-template/scl-bay-template.js',
     icon: 'edit',
     activeByDefault: false,
@@ -144,7 +144,7 @@ export const officialPlugins = [
     requireDoc: true
   },
   {
-    name: 'Bay Template Editor',
+    name: 'Editor de plantillas de campo',
     src: '/external-plugins/oscd-bay-template-editor/bay-template-editor.js',
     icon: 'edit',
     activeByDefault: false,
@@ -152,7 +152,7 @@ export const officialPlugins = [
     requireDoc: true
   },
   {
-    name: 'Open project',
+    name: 'Abrir proyecto',
     src: '/compas-plugins/menu/CompasOpen.js',
     icon: 'folder_open',
     activeByDefault: true,
@@ -161,7 +161,7 @@ export const officialPlugins = [
     position: 'top',
   },
   {
-    name: 'New project',
+    name: 'Nuevo proyecto',
     src: '/oscd-plugins/menu/NewProject.js',
     icon: 'create_new_folder',
     activeByDefault: true,
@@ -170,7 +170,7 @@ export const officialPlugins = [
     position: 'top',
   },
   {
-    name: 'Project from CIM',
+    name: 'Proyecto desde CIM',
     src: '/compas-plugins/menu/CompasCimMapping.js',
     icon: 'input',
     activeByDefault: true,
@@ -179,7 +179,7 @@ export const officialPlugins = [
     position: 'top',
   },
   {
-    name: 'Import from API',
+    name: 'Importar desde API',
     src: '/compas-plugins/menu/CompasImportFromApi.js',
     icon: 'cloud_download',
     activeByDefault: false,
@@ -188,7 +188,7 @@ export const officialPlugins = [
     position: 'top',
   },
   {
-    name: 'Save project',
+    name: 'Guardar proyecto',
     src: '/compas-plugins/menu/CompasSave.js',
     icon: 'save',
     activeByDefault: true,
@@ -197,7 +197,7 @@ export const officialPlugins = [
     position: 'top',
   },
   {
-    name: 'Save project as',
+    name: 'Guardar como...',
     src: '/compas-plugins/menu/CompasSaveAs.js',
     icon: 'save',
     activeByDefault: true,
@@ -206,7 +206,7 @@ export const officialPlugins = [
     position: 'top',
   },
   {
-    name: 'Save as version',
+    name: 'Guardar como versión',
     src: '/compas-plugins/menu/CompasSaveAsVersion.js',
     icon: 'save',
     activeByDefault: true,
@@ -215,28 +215,28 @@ export const officialPlugins = [
     position: 'top',
   },
   {
-    name: '[WIP] Validate using OCL',
+    name: '[WIP] Validar con OCL',
     src: '/compas-plugins/validators/CompasValidateSchema.js',
     icon: 'rule_folder',
     activeByDefault: false,
     kind: 'validator'
   },
   {
-    name: 'Validate Schema',
+    name: 'Validar esquema',
     src: '/oscd-plugins/validators/ValidateSchema.js',
     icon: 'rule_folder',
     activeByDefault: true,
     kind: 'validator',
   },
   {
-    name: 'Validate Templates',
+    name: 'Validar plantillas',
     src: '/oscd-plugins/validators/ValidateTemplates.js',
     icon: 'rule_folder',
     activeByDefault: true,
     kind: 'validator',
   },
   {
-    name: 'Import IEDs',
+    name: 'Importar IEDs',
     src: '/compas-plugins/menu/CompasImportIEDs.js',
     icon: 'snippet_folder',
     activeByDefault: true,
@@ -245,7 +245,7 @@ export const officialPlugins = [
     position: 'middle',
   },
   {
-    name: 'Extract IED',
+    name: 'Extraer IED',
     src: '/external-plugins/mbg-ied-extractor/mbg-icd-extractor.js',
     icon: 'code',
     activeByDefault: true,
@@ -254,7 +254,7 @@ export const officialPlugins = [
     position: 'middle',
   },
   {
-    name: 'Create Virtual IED',
+    name: 'Crear IED virtual',
     src: '/oscd-plugins/menu/VirtualTemplateIED.js',
     icon: 'developer_board',
     activeByDefault: false,
@@ -263,7 +263,7 @@ export const officialPlugins = [
     position: 'middle',
   },
   {
-    name: 'Subscriber Update',
+    name: 'Actualizar suscriptores',
     src: '/oscd-plugins/menu/SubscriberInfo.js',
     activeByDefault: true,
     kind: 'menu',
@@ -271,7 +271,7 @@ export const officialPlugins = [
     position: 'middle',
   },
   {
-    name: 'Update desc (ABB)',
+    name: 'Actualizar descripciones (ABB)',
     src: '/oscd-plugins/menu/UpdateDescriptionABB.js',
     activeByDefault: false,
     kind: 'menu',
@@ -279,7 +279,7 @@ export const officialPlugins = [
     position: 'middle',
   },
   {
-    name: 'Update desc (SEL)',
+    name: 'Actualizar descripciones (SEL)',
     src: '/oscd-plugins/menu/UpdateDescriptionSEL.js',
     activeByDefault: false,
     kind: 'menu',
@@ -287,7 +287,7 @@ export const officialPlugins = [
     position: 'middle',
   },
   {
-    name: 'Merge Project',
+    name: 'Fusionar proyecto',
     src: '/compas-plugins/menu/CompasMerge.js',
     icon: 'merge_type',
     activeByDefault: true,
@@ -296,7 +296,7 @@ export const officialPlugins = [
     position: 'middle',
   },
   {
-    name: 'Update Substation',
+    name: 'Actualizar subestación',
     src: '/compas-plugins/menu/CompasUpdateSubstation.js',
     icon: 'merge_type',
     activeByDefault: true,
@@ -305,7 +305,7 @@ export const officialPlugins = [
     position: 'middle',
   },
   {
-    name: 'Compare IED',
+    name: 'Comparar IED',
     src: '/compas-plugins/menu/CompasCompareIED.js',
     icon: 'compare_arrows',
     activeByDefault: true,
@@ -314,7 +314,7 @@ export const officialPlugins = [
     position: 'middle',
   },
   {
-    name: 'Auto Align SLD',
+    name: 'Alinear unifilar automáticamente',
     src: '/compas-plugins/menu/CompasAutoAlignment.js',
     icon: 'dashboard',
     activeByDefault: true,
@@ -323,7 +323,7 @@ export const officialPlugins = [
     position: 'middle',
   },
   {
-    name: 'Export IED Params',
+    name: 'Exportar parámetros de IED',
     src: '/compas-plugins/menu/ExportIEDParams.js',
     icon: 'download',
     activeByDefault: false,
@@ -341,7 +341,7 @@ export const officialPlugins = [
     position: 'middle',
   },
   {
-    name: 'Wizarding',
+    name: 'Asistentes',
     src: '/external-plugins/scl-wizarding/scl-wizarding.js',
     icon: 'edit',
     activeByDefault: true,
@@ -350,7 +350,7 @@ export const officialPlugins = [
     position: 'middle',
   },
   {
-    name: 'Show SCL History',
+    name: 'Ver historial SCL',
     src: '/oscd-plugins/menu/SclHistory.js',
     icon: 'history_toggle_off',
     activeByDefault: true,
@@ -359,7 +359,7 @@ export const officialPlugins = [
     position: 'bottom',
   },
   {
-    name: 'CoMPAS Settings',
+    name: 'Configuración CoMPAS',
     src: '/compas-plugins/menu/CompasSettings.js',
     icon: 'settings',
     activeByDefault: true,
@@ -368,7 +368,7 @@ export const officialPlugins = [
     position: 'bottom',
   },
   {
-    name: 'Help',
+    name: 'Ayuda',
     src: '/oscd-plugins/menu/Help.js',
     icon: 'help',
     activeByDefault: true,
@@ -377,7 +377,7 @@ export const officialPlugins = [
     position: 'bottom',
   },
   {
-    name: 'Export Communication Section',
+    name: 'Exportar sección Communication',
     src: '/oscd-plugins/menu/ExportCommunication.js',
     icon: 'sim_card_download',
     activeByDefault: false,
@@ -394,7 +394,7 @@ export const officialPlugins = [
     requireDoc: true
   },
   {
-    name: 'Autogen Substation',
+    name: 'Generar subestación automáticamente',
     src: '/compas-plugins/compas-editors/autogen-substation.js',
     icon: 'playlist_add_circle',
     activeByDefault: true,
@@ -403,7 +403,7 @@ export const officialPlugins = [
     position: 'middle',
   },
   {
-    name: 'Engineering Wizard',
+    name: 'Asistente de ingeniería',
     src: '/external-plugins/compas-transnetbw-plugins/plugins/engineering-wizard/index.js',
     icon: 'star',
     activeByDefault: true,
@@ -411,7 +411,7 @@ export const officialPlugins = [
     requireDoc: true,
   },
   {
-    name: 'Template Generator (TransnetBW)',
+    name: 'Generador de plantillas (TransnetBW)',
     src: '/external-plugins/compas-transnetbw-plugins/plugins/template-generator/index.js',
     icon: 'copy_all',
     activeByDefault: true,
@@ -419,7 +419,7 @@ export const officialPlugins = [
     requireDoc: true,
   },
   {
-    name: 'Location Manager',
+    name: 'Gestor de ubicaciones',
     src: '/external-plugins/compas-transnetbw-plugins/plugins/location-manager/index.js',
     icon: 'edit_location_alt',
     activeByDefault: false,
@@ -427,7 +427,7 @@ export const officialPlugins = [
     requireDoc: true,
   },
   {
-    name: 'Location Viewer',
+    name: 'Visor de ubicaciones',
     src: '/external-plugins/compas-transnetbw-plugins/plugins/location-viewer/index.js',
     icon: 'location_on',
     activeByDefault: false,
@@ -435,7 +435,7 @@ export const officialPlugins = [
     requireDoc: true,
   },
   {
-    name: 'History Viewer',
+    name: 'Visor de historial',
     src: '/external-plugins/compas-transnetbw-plugins/plugins/history-viewer/index.js',
     icon: 'history',
     activeByDefault: false,
@@ -443,7 +443,7 @@ export const officialPlugins = [
     requireDoc: true,
   },
   {
-    name: 'Archive Explorer',
+    name: 'Explorador de archivos',
     src: '/external-plugins/compas-transnetbw-plugins/plugins/archive-explorer/index.js',
     icon: 'archive',
     activeByDefault: false,
