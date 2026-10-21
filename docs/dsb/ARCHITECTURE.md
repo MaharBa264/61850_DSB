@@ -39,7 +39,7 @@ git merge upstream/main   # los conflictos esperables son solo los 3 puntos de e
 ## Despliegue en Rocky 8.10
 
 Ver [`deploy/README.md`](../../deploy/README.md). Resumen: el workflow `DSB Build` genera `dsb-dist.tar.gz`
-en cada push a `main`; `deploy/install-rocky.sh` lo publica en nginx. App 100 % estática por ahora.
+en cada push a `main`; `deploy/install-rocky.sh` lo publica con un nginx dedicado (`dsb-nginx`) en el **puerto 8095** (el 80 lo usa otra app del servidor). App 100 % estática por ahora.
 (Los scripts aún no se probaron en un Rocky real.)
 
 ## Contexto operativo (dato del usuario)

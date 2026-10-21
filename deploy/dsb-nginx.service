@@ -1,0 +1,14 @@
+[Unit]
+Description=DSB (61850) - servidor web estatico (nginx dedicado)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStartPre=/usr/sbin/nginx -t -c /etc/dsb/nginx.conf -g 'daemon off;'
+ExecStart=/usr/sbin/nginx -c /etc/dsb/nginx.conf -g 'daemon off;'
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
