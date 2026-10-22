@@ -39,6 +39,9 @@ export interface OpenProject {
 }
 
 const HEARTBEAT_MS = 30000;
+/** El borrador se guarda poco después del último cambio (y como máximo a los 10 s del primero). */
+const DRAFT_DEBOUNCE_MS = 1500;
+const DRAFT_MAX_WAIT_MS = 10000;
 
 const XML_DECL = '<?xml version="1.0" encoding="UTF-8"?>\n';
 
@@ -64,6 +67,9 @@ class Session extends EventTarget {
 
   private timer: number | undefined;
   private busy = false;
+  private draftTimer: number | undefined;
+  private firstDirtyAt = 0;
+  private draftQueue: Promise<void> = Promise.resolve();
 
   private emit() {
     this.dispatchEvent(new Event('change'));
@@ -195,11 +201,46 @@ class Session extends EventTarget {
     return r.id;
   }
 
+  /** Un cambio en el editor: programa el guardado del borrador. */
   noteEdit(): void {
-    if (this.project && this.project.editing && !this.project.dirty) {
-      this.project.dirty = true;
+    const p = this.project;
+    if (!p || !p.editing || p.lockLost) return;
+    if (!p.dirty) {
+      p.dirty = true;
+      this.firstDirtyAt = Date.now();
       this.emit();
     }
+    window.clearTimeout(this.draftTimer);
+    const wait = Math.max(0, Math.min(DRAFT_DEBOUNCE_MS, DRAFT_MAX_WAIT_MS - (Date.now() - this.firstDirtyAt)));
+    this.draftTimer = window.setTimeout(() => void this.flushDraft(), wait);
+  }
+
+  /**
+   * Guarda ya el borrador si hay cambios sin guardar. Las llamadas se encolan
+   * para que dos guardados no se pisen.
+   */
+  flushDraft(): Promise<void> {
+    window.clearTimeout(this.draftTimer);
+    this.draftQueue = this.draftQueue.then(() => this.saveDraftNow()).catch(() => undefined);
+    return this.draftQueue;
+  }
+
+  private async saveDraftNow(): Promise<void> {
+    const p = this.project;
+    if (!p || !p.editing || p.lockLost || !p.dirty || !this.host?.doc) return;
+    // se marca limpio antes de enviar: si el usuario edita durante el envío, noteEdit() lo vuelve a marcar
+    p.dirty = false;
+    try {
+      await api('PUT', `/projects/${p.id}/draft`, { content: serializeDoc(this.host.doc), base: p.base });
+      p.draftSavedAt = new Date();
+    } catch (e) {
+      p.dirty = true;
+      if ((e as ApiError).status === 409) {
+        p.lockLost = true;
+        p.notice = 'Perdió el bloqueo de edición: otra persona tomó el proyecto. Sus cambios no versionados se pueden descargar.';
+      }
+    }
+    this.emit();
   }
 
   private startHeartbeat() {
@@ -208,18 +249,14 @@ class Session extends EventTarget {
     this.timer = window.setInterval(() => void this.heartbeat(), HEARTBEAT_MS);
   }
 
-  /** Renueva el bloqueo y guarda el borrador si hay cambios. */
+  /** Renueva el bloqueo y guarda el borrador si quedó algo pendiente. */
   async heartbeat(): Promise<void> {
     const p = this.project;
     if (!p || !p.editing || p.lockLost || this.busy) return;
     this.busy = true;
     try {
       await api('POST', `/projects/${p.id}/lock`);
-      if (p.dirty && this.host?.doc) {
-        await api('PUT', `/projects/${p.id}/draft`, { content: serializeDoc(this.host.doc), base: p.base });
-        p.draftSavedAt = new Date();
-        p.dirty = false;
-      }
+      await this.flushDraft();
     } catch (e) {
       if ((e as ApiError).status === 409) {
         p.lockLost = true;
@@ -235,6 +272,8 @@ class Session extends EventTarget {
   async createVersion(message: string): Promise<{ number: number; unchanged: boolean }> {
     const p = this.project;
     if (!p || !p.editing || !this.host?.doc) throw new Error('No hay un proyecto abierto para editar.');
+    window.clearTimeout(this.draftTimer);
+    await this.draftQueue; // que ningún borrador en vuelo llegue después de la versión
     const r = await api<{ number: number; unchanged: boolean }>('POST', `/projects/${p.id}/versions`, { message, content: serializeDoc(this.host.doc), base: p.base });
     p.base = r.number;
     p.dirty = false;
@@ -248,6 +287,9 @@ class Session extends EventTarget {
   async restoreVersion(n: number, message?: string): Promise<void> {
     const p = this.project;
     if (!p || !p.editing) throw new Error('Abra el proyecto para editar.');
+    window.clearTimeout(this.draftTimer);
+    await this.draftQueue; // que no quede un guardado en vuelo que reponga el borrador
+    p.dirty = false; // lo no versionado se reemplaza por la versión restaurada
     const r = await api<{ number: number }>('POST', `/projects/${p.id}/versions/${n}/restore`, { message });
     const id = p.id;
     await this.openProject(id);
@@ -257,6 +299,7 @@ class Session extends EventTarget {
 
   async closeProject(silent = false): Promise<void> {
     window.clearInterval(this.timer);
+    await this.flushDraft(); // antes de soltar el proyecto: no se pierde lo hecho desde el último guardado
     const p = this.project;
     this.project = null;
     if (p?.editing && !p.lockLost) await api('DELETE', `/projects/${p.id}/lock`).catch(() => undefined);

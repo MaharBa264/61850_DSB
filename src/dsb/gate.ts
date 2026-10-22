@@ -112,7 +112,8 @@ export default class DsbGate extends LitElement {
   }
 
   protected updated(changed: Map<string, unknown>): void {
-    if (changed.has('editCount') && this.editCount > 0) session.noteEdit();
+    // el contador arranca en -1: cualquier cambio posterior al primer render es una edición (incluida la primera)
+    if (changed.has('editCount') && changed.get('editCount') !== undefined) session.noteEdit();
     if (changed.has('host')) session.host = this.host as never;
   }
 
