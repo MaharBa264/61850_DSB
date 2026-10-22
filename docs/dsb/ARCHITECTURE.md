@@ -76,7 +76,7 @@ Etapas:
 | A (hecho) | Proyecto (nombre obligatorio; ubicación, descripción, niveles de tensión) + convención de nomenclatura |
 | B (en curso: plantilla de campo de línea y visor/editor propio con símbolos IEC, exportación SVG/DXF hechos; plantillas de línea, alimentador y transformador de 2/3 arrollamientos hechas; falta PDF y alta de equipos sueltos) | Editor de unifilar con plantillas de campo, simbología IEC, edición libre; capas/bloques DXF definidos desde el inicio |
 | C (hecho) | Funciones ANSI->LN por equipo (LNode iedName="None"); paquetes típicos; exportación SSD, lista y resumen CSV para presupuesto |
-| D | Catálogo de IEDs (manual + ICD) y switches; verificación de capacidad |
+| D (hecho: catálogo de IEDs y switches, asignación, verificación de capacidad, lista de materiales) | Catálogo de IEDs (manual + ICD) y switches; verificación de capacidad |
 | E | RTU + red asistida (topología, IP/MAC/APPID/VLAN, carga, validación por subred) |
 | F | MMS y GOOSE editables (base: grafo de solo lectura ya hecho) |
 | G | Salidas: SCD, DXF, PDF/SVG, matriz GOOSE, lista de señales, tabla de direccionamiento |
@@ -115,5 +115,17 @@ Etapas:
 
 ## Barra de pestañas (flujo de trabajo)
 
-Pestañas activas por defecto, en el orden del flujo: 1. Proyecto, 2. Unifilar, 3. Funciones, 4. IEDs, 5. Red y comunicación, 6. MMS (reportes), 7. GOOSE, más el Explorador de comunicación. Quedan desactivadas (se activan desde la configuración de plugins) las duplicadas o de otra práctica: Subestación, Diagrama unifilar de CoMPAS, Plantillas, Versiones CoMPAS, ambos Generadores de plantillas, Sitipe, Asistente de ingeniería y la generación automática de subestación.
-`DSB_LAYOUT_VERSION` (en `src/open-scd.ts`) hace que, al cambiar la distribución, se descarten las activaciones guardadas en el navegador; nombre, ícono y orden siempre vienen de `public/js/plugins.js`.
+Pestañas activas por defecto, en el orden del flujo: 1. Proyecto, 2. Unifilar, 3. Funciones, 4. Catálogo e IEDs, 5. Red y comunicación, 6. MMS (reportes), 7. GOOSE, más el Explorador de comunicación y el Árbol de IEDs de CoMPAS. Quedan desactivadas (se activan desde la configuración de plugins) las duplicadas o de otra práctica: Subestación, Diagrama unifilar de CoMPAS, Plantillas, Versiones CoMPAS, ambos Generadores de plantillas, Sitipe, Asistente de ingeniería y la generación automática de subestación.
+`DSB_LAYOUT_VERSION` (hoy 3; en `src/open-scd.ts`) hace que, al cambiar la distribución, se descarten las activaciones guardadas en el navegador; nombre, ícono y orden siempre vienen de `public/js/plugins.js`.
+
+## Notas de la etapa D
+
+- Código: `lib/catalog-model.ts` (modelos, validación, importación de ICD, verificación, lista de materiales), `lib/catalog-store.ts` (localStorage), `editors/CatalogEditor.ts` (pestaña "4. Catálogo e IEDs").
+- **Modelo de IED = capacidad por clase de nodo lógico** (ej. PTOC×4, PDIS×1) + entradas/salidas digitales + canales analógicos + puertos (cobre/fibra) + protocolos + precio opcional. Se carga a mano o desde un ICD/IID: se cuentan los LN por clase (sin LPHD/LLN0) y se detectan GOOSE/MMS/SV por los bloques de control; E/S, puertos y precio se completan a mano.
+- **Switches**: catálogo genérico (puertos cobre/fibra, velocidad, redundancia RSTP/PRP/HSR, PoE, precio). Se usa en la etapa E.
+- El catálogo es dato del usuario: vive en el navegador y se exporta/importa como JSON (`format: dsb-catalog`); **no se versiona en el repositorio**.
+- Los modelos usados viajan dentro del proyecto: `Substation/Private type="DSB-Catalog"` (`dsb:IedModel` con `dsb:Cap`). Así el archivo se verifica en otra PC sin el catálogo.
+- IED planificado: `Private type="DSB-Ied"` (`dsb:Ied name model role`) en el Bay o PowerTransformer. **No crea todavía el elemento `IED` del SCL** (eso ocurre al importar el ICD real) ni cambia `iedName` de los LNode.
+- Verificación por campo/transformador: cada clase LN requerida (LNode de etapa C) contra la suma de capacidades de sus IEDs; E/S estimadas con una regla simple (2 DI por XCBR/XSWI, 2 DO por CSWI, 4 canales por TCTR, 3 por TVTR; ajustable en `estimateIo`).
+- "Asignar automáticamente" elige, para cada objeto sin IED, el modelo más barato que cubre todo; lista de materiales exportable a CSV.
+- Los nombres de IED son únicos en el proyecto y válidos como nombre SCL.
