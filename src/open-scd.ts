@@ -52,7 +52,7 @@ import { session as dsbSession } from './dsb/lib/session.js';
 
 /** Versión de la distribución de pestañas; subirla restablece qué pestañas están activas. */
 const DSB_LAYOUT_KEY = 'dsb-layout-version';
-const DSB_LAYOUT_VERSION = '4';
+const DSB_LAYOUT_VERSION = '5';
 
 const LNODE_LIB_DOC_ID = 'fc55c46d-c109-4ccd-bf66-9f1d0e135689';
 

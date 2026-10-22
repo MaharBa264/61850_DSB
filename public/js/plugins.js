@@ -33,7 +33,7 @@ export const officialPlugins = [
   },
   {
     name: '5. Red y comunicación',
-    src: '/oscd-plugins/editors/Communication.js',
+    src: '/dsb-plugins/editors/NetworkEditor.js',
     icon: 'settings_ethernet',
     activeByDefault: true,
     kind: 'editor',
@@ -60,6 +60,14 @@ export const officialPlugins = [
     src: '/dsb-plugins/editors/VersionsEditor.js',
     icon: 'history',
     activeByDefault: true,
+    kind: 'editor',
+    requireDoc: true,
+  },
+  {
+    name: 'Comunicación SCL (OpenSCD)',
+    src: '/oscd-plugins/editors/Communication.js',
+    icon: 'settings_ethernet',
+    activeByDefault: false,
     kind: 'editor',
     requireDoc: true,
   },

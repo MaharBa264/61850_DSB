@@ -28,6 +28,9 @@ src/dsb/
   lib/sld-edit.ts           ediciones EditV2: mover, renombrar (mantiene rutas/terminales), eliminar
   editors/SldEditor.ts      pestaña "Unifilar (DSB)": visor/editor propio (seleccionar, arrastrar con grilla, renombrar, eliminar, exportar)
   editors/GooseGraph.ts     editor gráfico GOOSE (fase 1: solo lectura)
+  lib/network-model.ts      plan de red (subredes, equipos, enlaces, flujos), direccionamiento y diseño automático. Pura
+  lib/network-check.ts      validación por subred y carga por enlace. Pura
+  editors/NetworkEditor.ts  pestaña "Red y comunicación"
 test/unit/dsb/              tests (wtr)
 docs/dsb/                   esta documentación
 ```
@@ -77,7 +80,7 @@ Etapas:
 | B (en curso: plantilla de campo de línea y visor/editor propio con símbolos IEC, exportación SVG/DXF hechos; plantillas de línea, alimentador y transformador de 2/3 arrollamientos hechas; falta PDF y alta de equipos sueltos) | Editor de unifilar con plantillas de campo, simbología IEC, edición libre; capas/bloques DXF definidos desde el inicio |
 | C (hecho) | Funciones ANSI->LN por equipo (LNode iedName="None"); paquetes típicos; exportación SSD, lista y resumen CSV para presupuesto |
 | D (hecho: catálogo de IEDs y switches, asignación, verificación de capacidad, lista de materiales) | Catálogo de IEDs (manual + ICD) y switches; verificación de capacidad |
-| E | RTU + red asistida (topología, IP/MAC/APPID/VLAN, carga, validación por subred) |
+| E (hecho: plan de red con subredes, RTU, topología automática, direccionamiento, flujos GOOSE/SV, carga y validación por subred; bus de proceso previsto en el modelo) | RTU + red asistida (topología, IP/MAC/APPID/VLAN, carga, validación por subred) |
 | F | MMS y GOOSE editables (base: grafo de solo lectura ya hecho) |
 | G | Salidas: SCD, DXF, PDF/SVG, matriz GOOSE, lista de señales, tabla de direccionamiento |
 
@@ -115,8 +118,8 @@ Etapas:
 
 ## Barra de pestañas (flujo de trabajo)
 
-Pestañas activas por defecto, en el orden del flujo: 1. Proyecto, 2. Unifilar, 3. Funciones, 4. Catálogo e IEDs, 5. Red y comunicación, 6. MMS (reportes), 7. GOOSE, más el Explorador de comunicación y el Árbol de IEDs de CoMPAS. Quedan desactivadas (se activan desde la configuración de plugins) las duplicadas o de otra práctica: Subestación, Diagrama unifilar de CoMPAS, Plantillas, Versiones CoMPAS, ambos Generadores de plantillas, Sitipe, Asistente de ingeniería y la generación automática de subestación.
-`DSB_LAYOUT_VERSION` (hoy 3; en `src/open-scd.ts`) hace que, al cambiar la distribución, se descarten las activaciones guardadas en el navegador; nombre, ícono y orden siempre vienen de `public/js/plugins.js`.
+Pestañas activas por defecto, en el orden del flujo: 1. Proyecto, 2. Unifilar, 3. Funciones, 4. Catálogo e IEDs, 5. Red y comunicación, 6. MMS (reportes), 7. GOOSE, más el Explorador de comunicación y el Árbol de IEDs de CoMPAS. Quedan desactivadas (se activan desde la configuración de plugins) las duplicadas o de otra práctica: Comunicación SCL de OpenSCD (edita `Communication`/`ConnectedAP` reales; útil en las etapas F/G), Subestación, Diagrama unifilar de CoMPAS, Plantillas, Versiones CoMPAS, ambos Generadores de plantillas, Sitipe, Asistente de ingeniería y la generación automática de subestación.
+`DSB_LAYOUT_VERSION` (hoy 5; en `src/open-scd.ts`) hace que, al cambiar la distribución, se descarten las activaciones guardadas en el navegador; nombre, ícono y orden siempre vienen de `public/js/plugins.js`.
 
 ## Notas de la etapa D
 
@@ -129,6 +132,19 @@ Pestañas activas por defecto, en el orden del flujo: 1. Proyecto, 2. Unifilar, 
 - Verificación por campo/transformador: cada clase LN requerida (LNode de etapa C) contra la suma de capacidades de sus IEDs; E/S estimadas con una regla simple (2 DI por XCBR/XSWI, 2 DO por CSWI, 4 canales por TCTR, 3 por TVTR; ajustable en `estimateIo`).
 - "Asignar automáticamente" elige, para cada objeto sin IED, el modelo más barato que cubre todo; lista de materiales exportable a CSV.
 - Los nombres de IED son únicos en el proyecto y válidos como nombre SCL.
+
+## Notas de la etapa E
+
+- Código: `lib/network-model.ts` (tipos, direccionamiento, asignación asistida, importación de IED, diseño automático, lectura/escritura), `lib/network-check.ts` (validación y carga), `editors/NetworkEditor.ts` (pestaña "5. Red y comunicación"), `test/unit/dsb/network-model.test.ts`.
+- El plan viaja en el proyecto: `Substation/Private type="DSB-Network"` (`dsb:Network` con `dsb:Subnet`, `dsb:Node` (+ `dsb:If`), `dsb:Link`, `dsb:Stream`). Entra al control de versiones como el resto. **Todavía no genera `Communication`/`ConnectedAP`/`GSE`/`SMV`**: eso es de la etapa G, cuando existan los IED reales (los IED planificados no tienen elemento `IED`). La tabla de direccionamiento ya sale en CSV.
+- La edición se hace sobre una copia de trabajo; "Guardar plan" escribe una sola edición ("Plan de red"), de modo que no se llena el historial de deshacer.
+- **Subred = dominio L2.** Duplicados de IP, MAC y APPID se buscan dentro de cada subred; las redes de RTU (`kind=rtu`, con RTU dueña) son independientes y pueden repetir direccionamiento. Error si un equipo une dos redes con rangos que se pisan; aviso si un equipo ajeno a una RTU está en varias redes de RTU.
+- Tipos de subred: estación, bus de proceso, RTU, otra. Por subred: CIDR, VLAN, prioridad 802.1p, velocidad, redundancia (ninguna/RSTP/PRP/HSR), poda de multicast, puerta de enlace, tráfico de fondo.
+- Reglas de validación: formato y pertenencia de IP (no red/difusión/gateway), MAC unicast de equipo, MAC multicast de flujo en el rango de la norma (GOOSE 01-0C-CD-01-00-00..01-FF; SV 01-0C-CD-04-00-00..01-FF; fuera = aviso), APPID únicos por subred (recomendado GOOSE 0x0000–0x3FFF, SV 0x4000–0x7FFF), publicador y suscriptores conectados a la subred, puertos usados contra el modelo del catálogo (cobre/fibra y reservados), red partida, lazos sin RSTP/HSR, PRP con enlaces en LAN A y B.
+- **Carga:** por enlace y por sentido. Cada flujo recorre el árbol desde su publicador (sin poda: toda la subred, peor caso; con poda: solo hacia los suscriptores); en PRP se cuenta en cada LAN. Bits por trama = (bytes + 20 de preámbulo y espacio entre tramas) × 8. Aviso desde 50 % del enlace, error desde 80 %, aviso de pico (tramas extra tras un evento) desde 90 %. **Los tamaños de trama y tasas de los perfiles (GOOSE 200 B a 1 trama/s; SV 9-2LE 126 B a 4000 tramas/s) son estimaciones editables, no medidas.**
+- **Bus de proceso previsto:** subred tipo "bus de proceso" (1 Gbit/s, sin tráfico de fondo), equipos tipo unidad de fusión, flujos SV, poda de multicast y puertos reservados por equipo (`reserved`); el botón "Dejar previsto el bus de proceso" crea la subred y reserva un puerto por IED. Importar IED no los conecta al bus de proceso: se hace con "Conectar IED con SV al bus de proceso" (solo modelos del catálogo que declaran SV).
+- Diseño automático de topología: un switch por grupo (nivel de tensión), el modelo de switch más chico del catálogo que alcance (o genérico de 8/16/24 puertos de cobre + 2 de fibra), enlaces entre switches en estrella o, con RSTP y tres o más, en anillo; respeta puertos de cada equipo y deja dos para los enlaces entre switches; los equipos sin grupo (RTU, gateway) cuelgan de un switch existente. No modifica enlaces existentes. PRP/HSR se arman a mano.
+- Valores iniciales propuestos (no son estándar de EDESAL): 10.10.x.0/24 estación, 10.20.x.0/24 proceso, 10.30.x.0/24 RTU; bloques de IP por tipo (switch .2, RTU/gateway .10, IED .20, unidad de fusión .100).
 
 ## Usuarios, proyectos y versiones (servidor)
 

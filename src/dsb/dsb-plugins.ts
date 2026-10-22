@@ -2,6 +2,7 @@ import { pluginTag } from '@compas-oscd/open-scd/dist/plugin-tag.js';
 
 import { default as CatalogEditor } from './editors/CatalogEditor.js';
 import { default as FunctionsEditor } from './editors/FunctionsEditor.js';
+import { default as NetworkEditor } from './editors/NetworkEditor.js';
 import { default as VersionsEditor } from './editors/VersionsEditor.js';
 import { default as ProjectsMenu } from './menu/ProjectsMenu.js';
 import { default as GooseGraph } from './editors/GooseGraph.js';
@@ -19,6 +20,7 @@ export enum DsbPluginSrc {
   Sld = '/dsb-plugins/editors/SldEditor.js',
   Functions = '/dsb-plugins/editors/FunctionsEditor.js',
   Catalog = '/dsb-plugins/editors/CatalogEditor.js',
+  Network = '/dsb-plugins/editors/NetworkEditor.js',
   Versions = '/dsb-plugins/editors/VersionsEditor.js',
   ProjectsMenu = '/dsb-plugins/menu/ProjectsMenu.js',
   GooseGraph = '/dsb-plugins/editors/GooseGraph.js',
@@ -29,6 +31,7 @@ const plugins: { [key in DsbPluginSrc]: CustomElementConstructor } = {
   [DsbPluginSrc.Sld]: SldEditor,
   [DsbPluginSrc.Functions]: FunctionsEditor,
   [DsbPluginSrc.Catalog]: CatalogEditor,
+  [DsbPluginSrc.Network]: NetworkEditor,
   [DsbPluginSrc.Versions]: VersionsEditor,
   [DsbPluginSrc.ProjectsMenu]: ProjectsMenu,
   [DsbPluginSrc.GooseGraph]: GooseGraph,
