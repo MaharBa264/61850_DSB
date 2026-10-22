@@ -468,6 +468,14 @@ export const officialPlugins = [
     requireDoc: true,
   },
   {
+    name: 'Funciones (DSB)',
+    src: '/dsb-plugins/editors/FunctionsEditor.js',
+    icon: 'rule',
+    activeByDefault: true,
+    kind: 'editor',
+    requireDoc: true,
+  },
+  {
     name: 'Editor GOOSE (DSB)',
     src: '/dsb-plugins/editors/GooseGraph.js',
     icon: 'hub',

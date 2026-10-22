@@ -16,6 +16,12 @@ import {
 import { newEditEventV2 } from '@compas-oscd/core';
 
 import {
+  bayPackageEdits,
+  LnAllocator,
+  transformerPackageEdits,
+} from '../lib/functions-model.js';
+
+import {
   BAY_TEMPLATES,
   BayTemplate,
   cascadeRows,
@@ -73,6 +79,7 @@ export default class DsbProjectPlugin extends LitElement {
   @state() private bayName = '';
   @state() private bayVT = false;
   @state() private bayTemplate: BayTemplate = 'linea';
+  @state() private withFunctions = true;
   @state() private trName = '';
   @state() private trWindings: string[] = ['', '', ''];
   @state() private message = '';
@@ -205,8 +212,11 @@ export default class DsbProjectPlugin extends LitElement {
       { substation: sub.getAttribute('name') ?? '', voltageLevel: this.bayVl },
       { name, busbars, column: suggestColumn(vl), withVT: this.bayVT, template: this.bayTemplate }
     );
+    const fnEdits = this.withFunctions
+      ? bayPackageEdits(this.doc, bay, parseFloat(this.voltage(vl)) || 0, new LnAllocator(sub), this.bayTemplate)
+      : [];
     this.emit(
-      [...namespaceEdits(this.doc), { parent: vl, node: bay, reference: null }],
+      [...namespaceEdits(this.doc), { parent: vl, node: bay, reference: null }, ...fnEdits],
       `Campo ${name}`
     );
     this.bayName = '';
@@ -261,6 +271,8 @@ export default class DsbProjectPlugin extends LitElement {
     const windings: { voltageLevel: string; bayName: string }[] = [];
     let high: Element | undefined;
     let highColumn = 0;
+    const alloc = new LnAllocator(sub);
+    const fnEdits: Parameters<typeof newEditEventV2>[0][] = [];
     levels.forEach((lv, i) => {
       const vl = this.voltageLevels.find(v => v.getAttribute('name') === lv)!;
       const bayName = suggestTransformerBayName(name, this.voltage(vl));
@@ -269,15 +281,14 @@ export default class DsbProjectPlugin extends LitElement {
         high = vl;
         highColumn = column;
       }
-      edits.push({
-        parent: vl,
-        node: createBay(
-          this.doc,
-          { substation: subName, voltageLevel: lv },
-          { name: bayName, busbars: listBusbars(vl), column, template: 'trafo', inverted: i > 0 }
-        ),
-        reference: null,
-      });
+      const bayNode = createBay(
+        this.doc,
+        { substation: subName, voltageLevel: lv },
+        { name: bayName, busbars: listBusbars(vl), column, template: 'trafo', inverted: i > 0 }
+      );
+      edits.push({ parent: vl, node: bayNode, reference: null });
+      if (this.withFunctions)
+        fnEdits.push(...bayPackageEdits(this.doc, bayNode, parseFloat(this.voltage(vl)) || 0, alloc, 'trafo'));
       windings.push({ voltageLevel: lv, bayName });
     });
     const n = sub.querySelectorAll(':scope > PowerTransformer').length;
@@ -286,11 +297,10 @@ export default class DsbProjectPlugin extends LitElement {
         .map(lv => this.voltage(this.voltageLevels.find(v => v.getAttribute('name') === lv)!))
         .join('/') + ' kV';
     const pos = transformerPlacement(high!, highColumn);
-    edits.push({
-      parent: sub,
-      node: createPowerTransformer(this.doc, subName, { name, desc, windings }, pos.x, pos.y),
-      reference: sub.querySelector(':scope > VoltageLevel'),
-    });
+    const ptNode = createPowerTransformer(this.doc, subName, { name, desc, windings }, pos.x, pos.y);
+    edits.push({ parent: sub, node: ptNode, reference: sub.querySelector(':scope > VoltageLevel') });
+    if (this.withFunctions) fnEdits.push(...transformerPackageEdits(this.doc, ptNode, alloc));
+    edits.push(...fnEdits);
     // Reubicar los niveles en cascada (el de mayor tensión conserva su fila).
     for (const r of cascadeRows(sub))
       edits.push({
@@ -440,6 +450,12 @@ export default class DsbProjectPlugin extends LitElement {
                             @click=${() => (this.bayVT = !this.bayVT)}
                           ></mwc-switch>
                         </mwc-formfield></mwc-formfield>` : ''}
+                        <mwc-formfield label="Agregar funciones típicas">
+                          <mwc-switch
+                            ?selected=${this.withFunctions}
+                            @click=${() => (this.withFunctions = !this.withFunctions)}
+                          ></mwc-switch>
+                        </mwc-formfield>
                         <mwc-button outlined label="Agregar campo" @click=${this.addLineBay}></mwc-button>
                       </div>
                       ${this.touched && validateName(this.bayName)
@@ -480,6 +496,12 @@ export default class DsbProjectPlugin extends LitElement {
                             )}
                           </mwc-select>`
                         )}
+                        <mwc-formfield label="Agregar funciones típicas">
+                          <mwc-switch
+                            ?selected=${this.withFunctions}
+                            @click=${() => (this.withFunctions = !this.withFunctions)}
+                          ></mwc-switch>
+                        </mwc-formfield>
                         <mwc-button outlined label="Agregar transformador" @click=${this.addTransformer}></mwc-button>
                       </div>
                       ${this.touched && validateName(this.trName)

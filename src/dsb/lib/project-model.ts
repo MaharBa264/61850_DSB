@@ -13,6 +13,8 @@ export const XMLNS_NS = 'http://www.w3.org/2000/xmlns/';
 /** Espacio de nombres propio para metadatos de DSB (dentro de `Private`). */
 export const DSB_NS = 'urn:edesal:dsb:1';
 export const DSB_PRIVATE_TYPE = 'DSB-Project';
+/** Marca (Private) con la plantilla de origen de un campo. */
+export const BAY_PRIVATE_TYPE = 'DSB-Bay';
 
 /** Separación vertical (en celdas) entre niveles de tensión en el unifilar. */
 const VOLTAGE_LEVEL_ROW_SPAN = 12;
@@ -293,6 +295,11 @@ export function createBay(
 ): Element {
   const bayName = spec.name.trim();
   const bay = el(doc, 'Bay', { name: bayName });
+  const marker = el(doc, 'Private', { type: BAY_PRIVATE_TYPE });
+  const tag = doc.createElementNS(DSB_NS, 'dsb:Bay');
+  tag.setAttribute('template', spec.template);
+  marker.appendChild(tag);
+  bay.appendChild(marker);
   setXY(bay, spec.column, spec.template === 'trafo' && spec.inverted ? INVERTED_BAY_ROW : BAY_ROW);
 
   const nodes = new Set<string>();

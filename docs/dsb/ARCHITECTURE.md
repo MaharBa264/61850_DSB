@@ -75,7 +75,7 @@ Etapas:
 |---|---|
 | A (hecho) | Proyecto (nombre obligatorio; ubicación, descripción, niveles de tensión) + convención de nomenclatura |
 | B (en curso: plantilla de campo de línea y visor/editor propio con símbolos IEC, exportación SVG/DXF hechos; plantillas de línea, alimentador y transformador de 2/3 arrollamientos hechas; falta PDF y alta de equipos sueltos) | Editor de unifilar con plantillas de campo, simbología IEC, edición libre; capas/bloques DXF definidos desde el inicio |
-| C | Funciones ANSI->LN por equipo (LNode iedName="None"); exportación SSD y lista de funciones para presupuesto |
+| C (hecho) | Funciones ANSI->LN por equipo (LNode iedName="None"); paquetes típicos; exportación SSD, lista y resumen CSV para presupuesto |
 | D | Catálogo de IEDs (manual + ICD) y switches; verificación de capacidad |
 | E | RTU + red asistida (topología, IP/MAC/APPID/VLAN, carga, validación por subred) |
 | F | MMS y GOOSE editables (base: grafo de solo lectura ya hecho) |
@@ -102,3 +102,13 @@ Etapas:
 - Dibujo en cascada del transformador (`PowerTransformer`, 2 o 3 arrollamientos): el nivel de mayor tensión lleva su campo de transformador colgando de la barra; el transformador queda debajo, alineado con el TC; el 2.º arrollamiento baja recto al campo del nivel siguiente, que cuelga *encima* de su barra (`inverted`, `sxy:y` negativo). El 3.º arrollamiento sale por la izquierda y baja por un corredor a la izquierda de los campos hasta el tercer nivel. Los niveles se reubican con `cascadeRows` (15 filas entre el 1.º y el 2.º, 12 entre los siguientes).
 - Con 2 transformadores en paralelo, el corredor del 2.º cruza la barra del nivel intermedio (cruce sin conexión). Conviene crear primero los transformadores y luego los demás campos.
 - Sugerencia de nombre del campo de trafo: `<trafo>_<kV>` (ej. `TR1_132`, `TR1_13_2`).
+
+## Notas de la etapa C
+
+- Código: `lib/functions-catalog.ts` (catálogo ANSI→clase LN y paquetes típicos por tipo de campo y kV), `lib/functions-model.ts` (asignación, recolección, CSV, SSD), `editors/FunctionsEditor.ts` (pestaña "Funciones (DSB)").
+- Una función asignada es un `LNode` con `iedName="None"` bajo el equipo, campo o transformador, con `Private type="DSB-Function"` (`dsb:Function id/ansi/name`). Al cargar IEDs (etapa D) se reemplaza `iedName`.
+- Los campos llevan `Private type="DSB-Bay"` (`dsb:Bay template`) para saber su tipo.
+- `lnInst` único por clase en toda la subestación (`LnAllocator`).
+- Paquetes típicos (propuesta inicial, **no** norma EDESAL): línea ≥66 kV: 21, 67, 67N, 25; línea menor: 50/51, 50N/51N; más 79, 50BF, 94, CSWI, CILO, XCBR. Alimentador: 50/51, 50N/51N, 79, 81U, 94. Trafo: 87T, 49, YPTR, YLTC, 90.
+- Salidas: lista detallada CSV, resumen CSV (por grupo; protección+automatismo dimensionan IEDs) y SSD (SCD sin IED/Communication), validado contra el XSD 2007B4.
+- Los campos de trafo de 132 kV no llevan 87T propio: va en el `PowerTransformer`.
