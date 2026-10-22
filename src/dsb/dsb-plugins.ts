@@ -2,6 +2,7 @@ import { pluginTag } from '@compas-oscd/open-scd/dist/plugin-tag.js';
 
 import { default as GooseGraph } from './editors/GooseGraph.js';
 import { default as ProjectEditor } from './editors/ProjectEditor.js';
+import { default as SldEditor } from './editors/SldEditor.js';
 
 /**
  * Registro de plugins propios de DSB (61850_DSB).
@@ -11,11 +12,13 @@ import { default as ProjectEditor } from './editors/ProjectEditor.js';
  */
 export enum DsbPluginSrc {
   Project = '/dsb-plugins/editors/ProjectEditor.js',
+  Sld = '/dsb-plugins/editors/SldEditor.js',
   GooseGraph = '/dsb-plugins/editors/GooseGraph.js',
 }
 
 const plugins: { [key in DsbPluginSrc]: CustomElementConstructor } = {
   [DsbPluginSrc.Project]: ProjectEditor,
+  [DsbPluginSrc.Sld]: SldEditor,
   [DsbPluginSrc.GooseGraph]: GooseGraph,
 };
 

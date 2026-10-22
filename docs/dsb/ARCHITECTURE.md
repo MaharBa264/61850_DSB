@@ -23,6 +23,10 @@ src/dsb/
   lib/goose-model.ts        SCL -> {IEDs, GSEControl, enlaces publicador->suscriptor}. Función pura, sin UI
   lib/project-model.ts      proyecto, niveles de tensión y plantilla de campo de línea (SCL + coordenadas sxy). Función pura
   editors/ProjectEditor.ts  pestaña "Proyecto (DSB)": datos del proyecto, niveles de tensión, alta de campos
+  lib/sld-model.ts          SCL (sxy) -> primitivas de dibujo con símbolos IEC (CBR, DIS, ERS, CTR, VTR, trafo). Pura
+  lib/sld-export.ts         primitivas -> SVG y DXF (capas EQUIPOS, BARRAS, CONEXIONES, TRANSFORMADORES, TEXTOS_CAMPO)
+  lib/sld-edit.ts           ediciones EditV2: mover, renombrar (mantiene rutas/terminales), eliminar
+  editors/SldEditor.ts      pestaña "Unifilar (DSB)": visor/editor propio (seleccionar, arrastrar con grilla, renombrar, eliminar, exportar)
   editors/GooseGraph.ts     editor gráfico GOOSE (fase 1: solo lectura)
 test/unit/dsb/              tests (wtr)
 docs/dsb/                   esta documentación
@@ -70,7 +74,7 @@ Etapas:
 | Etapa | Entregable |
 |---|---|
 | A (hecho) | Proyecto (nombre obligatorio; ubicación, descripción, niveles de tensión) + convención de nomenclatura |
-| B (en curso: plantilla de campo de línea hecha; falta visor propio con símbolos IEC) | Editor de unifilar con plantillas de campo, simbología IEC, edición libre; capas/bloques DXF definidos desde el inicio |
+| B (en curso: plantilla de campo de línea y visor/editor propio con símbolos IEC, exportación SVG/DXF hechos; faltan plantillas de trafo 3 arrollamientos y alimentador, PDF) | Editor de unifilar con plantillas de campo, simbología IEC, edición libre; capas/bloques DXF definidos desde el inicio |
 | C | Funciones ANSI->LN por equipo (LNode iedName="None"); exportación SSD y lista de funciones para presupuesto |
 | D | Catálogo de IEDs (manual + ICD) y switches; verificación de capacidad |
 | E | RTU + red asistida (topología, IP/MAC/APPID/VLAN, carga, validación por subred) |
@@ -90,7 +94,7 @@ Etapas:
 
 ## Notas de la etapa B
 
-- El visor "Diagrama unifilar" de CoMPAS dibuja líneas y conexiones pero **no dibuja los símbolos** de interruptor, seccionador, TC, etc. (solo el transformador). Se verificó también con un SCD de prueba propio de upstream. Por eso el siguiente paso es un visor/editor propio con símbolos IEC, que además es la base de la exportación DXF/SVG/PDF.
+- El visor "Diagrama unifilar" de CoMPAS dibuja líneas y conexiones pero **no dibuja los símbolos** de interruptor, seccionador, TC, etc. (solo el transformador). Se verificó también con un SCD de prueba propio de upstream. Por eso DSB trae su propio visor (`Unifilar (DSB)`); el de CoMPAS se mantiene sin tocar para no divergir de upstream. Las primitivas del visor son la misma fuente de la exportación SVG/DXF.
 - Las plantillas generan SCL estándar con `sxy:x/sxy:y` y `Terminal`/`ConnectivityNode`, de modo que el resultado abre en cualquier otra herramienta.
 - La puesta a tierra usa `type="ERS"` (lo reconoce OpenSCD); a verificar contra herramientas de terceros.
 - La ubicación del proyecto se guarda en `Private type="DSB-Project"` (namespace `urn:edesal:dsb:1`).

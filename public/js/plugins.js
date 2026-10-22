@@ -460,6 +460,14 @@ export const officialPlugins = [
     requireDoc: true,
   },
   {
+    name: 'Unifilar (DSB)',
+    src: '/dsb-plugins/editors/SldEditor.js',
+    icon: 'electric_bolt',
+    activeByDefault: true,
+    kind: 'editor',
+    requireDoc: true,
+  },
+  {
     name: 'Editor GOOSE (DSB)',
     src: '/dsb-plugins/editors/GooseGraph.js',
     icon: 'hub',
