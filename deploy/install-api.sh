@@ -79,7 +79,7 @@ chown -R root:root "$NEW"
 chmod -R go+rX "$NEW"
 [[ -d "$APP" ]] && mv "$APP" "${APP}.prev-${STAMP}"
 mv "$NEW" "$APP"
-ls -dt ${APP}.prev-* 2>/dev/null | tail -n +4 | xargs -r rm -rf
+ls -dt ${APP}.prev-* 2>/dev/null | tail -n +4 | xargs -r rm -rf || true
 
 # 5) Servicio
 sed -e "s#@NODE@#${NODE}#" -e "s#@PGUNIT@#${PGUNIT}#" "$HERE/dsb-api.service" > /etc/systemd/system/dsb-api.service
