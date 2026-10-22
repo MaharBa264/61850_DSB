@@ -21,6 +21,8 @@ IEC 61850 en EDESAL. Remotes: `origin` = este repo, `upstream` = com-pas/compas-
 src/dsb/
   dsb-plugins.ts            registro de plugins DSB (equivalente a compas-plugins.ts)
   lib/goose-model.ts        SCL -> {IEDs, GSEControl, enlaces publicador->suscriptor}. Función pura, sin UI
+  lib/project-model.ts      proyecto, niveles de tensión y plantilla de campo de línea (SCL + coordenadas sxy). Función pura
+  editors/ProjectEditor.ts  pestaña "Proyecto (DSB)": datos del proyecto, niveles de tensión, alta de campos
   editors/GooseGraph.ts     editor gráfico GOOSE (fase 1: solo lectura)
 test/unit/dsb/              tests (wtr)
 docs/dsb/                   esta documentación
@@ -67,8 +69,8 @@ Decisiones del usuario:
 Etapas:
 | Etapa | Entregable |
 |---|---|
-| A | Proyecto (nombre obligatorio; ubicación, descripción, niveles de tensión) + convención de nomenclatura |
-| B | Editor de unifilar con plantillas de campo, simbología IEC, edición libre; capas/bloques DXF definidos desde el inicio |
+| A (hecho) | Proyecto (nombre obligatorio; ubicación, descripción, niveles de tensión) + convención de nomenclatura |
+| B (en curso: plantilla de campo de línea hecha; falta visor propio con símbolos IEC) | Editor de unifilar con plantillas de campo, simbología IEC, edición libre; capas/bloques DXF definidos desde el inicio |
 | C | Funciones ANSI->LN por equipo (LNode iedName="None"); exportación SSD y lista de funciones para presupuesto |
 | D | Catálogo de IEDs (manual + ICD) y switches; verificación de capacidad |
 | E | RTU + red asistida (topología, IP/MAC/APPID/VLAN, carga, validación por subred) |
@@ -85,3 +87,10 @@ Etapas:
 6. [ ] Validaciones de ingeniería (ej. confRev, APPID/MAC/IP duplicados **por subred**, FCDA inexistentes)
 7. [ ] Instanciador de RTU desde ICD plantilla (nombre, IP, MAC/APPID, sustitución de GoID/rptID)
 8. [ ] Soporte SV / merging units (requiere ICD/SCD de Siemens e Hitachi para verificar)
+
+## Notas de la etapa B
+
+- El visor "Diagrama unifilar" de CoMPAS dibuja líneas y conexiones pero **no dibuja los símbolos** de interruptor, seccionador, TC, etc. (solo el transformador). Se verificó también con un SCD de prueba propio de upstream. Por eso el siguiente paso es un visor/editor propio con símbolos IEC, que además es la base de la exportación DXF/SVG/PDF.
+- Las plantillas generan SCL estándar con `sxy:x/sxy:y` y `Terminal`/`ConnectivityNode`, de modo que el resultado abre en cualquier otra herramienta.
+- La puesta a tierra usa `type="ERS"` (lo reconoce OpenSCD); a verificar contra herramientas de terceros.
+- La ubicación del proyecto se guarda en `Private type="DSB-Project"` (namespace `urn:edesal:dsb:1`).
