@@ -1,8 +1,7 @@
 [Unit]
 Description=DSB (61850) - servidor de usuarios, proyectos y versiones
-After=network-online.target postgresql.service
-Wants=network-online.target
-Requires=postgresql.service
+After=network-online.target @PGUNIT@
+Wants=network-online.target @PGUNIT@
 
 [Service]
 Type=simple

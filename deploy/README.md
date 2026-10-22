@@ -67,14 +67,14 @@ sudo bash /tmp/deploy/install-rocky.sh /tmp/dsb-dist.tar.gz
 
 `build-and-install.sh` instala también el servidor de proyectos (`deploy/install-api.sh`):
 
-- **PostgreSQL**: si el servidor ya lo tiene instalado se usa tal cual (solo se agrega el rol y la base `dsb`; no se toca nada más); si no, instala el módulo `postgresql:15` de Rocky.
+- **PostgreSQL**: si el servidor ya tiene uno en marcha (de cualquier origen: PGDG, AppStream...) se usa ese: solo se agrega el rol y la base `dsb`, sin tocar nada más. Solo si no hay ninguno instala el módulo `postgresql:15` de Rocky.
   El servicio entra a la base por el **socket local** con el usuario del sistema `dsb` (autenticación `peer`): no hay contraseña de base que guardar.
 - **Servicio** `dsb-api` (usuario `dsb`, solo escucha en `127.0.0.1:3095`), código en `/opt/dsb/server`, configuración en `/etc/dsb/api.env`.
 - **Usuario inicial**: al terminar el primer despliegue se muestra **una sola vez** el usuario `admin` y su contraseña temporal (se obliga a cambiarla al ingresar).
   Si se pierde: `sudo -u postgres psql dsb -c "DELETE FROM users WHERE username='admin'"` y `sudo systemctl restart dsb-api` genera uno nuevo solo si no queda ningún usuario;
   en otro caso, otro administrador la restablece desde la pestaña *Usuarios*.
 - **Respaldo diario** a las 02:30 (`dsb-backup.timer`) en `/var/backups/dsb`, 30 días. Contiene usuarios, proyectos y **todas las versiones**.
-  Probar a mano: `sudo /usr/local/sbin/dsb-backup.sh`. Restaurar: `sudo -u postgres pg_restore --clean --if-exists -d dsb /var/backups/dsb/ARCHIVO.dump`.
+  Probar a mano: `sudo /usr/local/sbin/dsb-backup.sh`. Restaurar: `sudo -u postgres /usr/pgsql-16/bin/pg_restore --clean --if-exists -d dsb /var/backups/dsb/ARCHIVO.dump` (la ruta depende de la versión instalada).
   Conviene copiar esa carpeta periódicamente a otro equipo.
 - **HTTPS**: hoy se sirve por HTTP en la red interna, por lo que la contraseña y la sesión viajan sin cifrar. Antes de uso real conviene un certificado interno en el nginx
   y poner `DSB_SECURE_COOKIE=1` en `/etc/dsb/api.env` (luego `sudo systemctl restart dsb-api`).
