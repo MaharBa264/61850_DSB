@@ -236,7 +236,7 @@ export default class DsbFunctionsPlugin extends LitElement {
   render(): TemplateResult {
     const sub = this.substation;
     if (!this.doc) return html``;
-    if (!sub) return html`<p class="empty">No hay subestación. Créela en la pestaña "Proyecto (DSB)".</p>`;
+    if (!sub) return html`<p class="empty">No hay subestación. Créela en la pestaña "1. Proyecto".</p>`;
     return html`
       <div class="bar">
         <strong>Funciones</strong>

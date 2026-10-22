@@ -48,6 +48,10 @@ import { registerOscdPlugins, OscdPluginSrc } from './oscd-plugins.js';
 import { registerCompasPlugins, CompasPluginSrc } from './compas-plugins.js';
 import { registerDsbPlugins, DsbPluginSrc } from './dsb/dsb-plugins.js';
 
+/** Versión de la distribución de pestañas; subirla restablece qué pestañas están activas. */
+const DSB_LAYOUT_KEY = 'dsb-layout-version';
+const DSB_LAYOUT_VERSION = '2';
+
 const LNODE_LIB_DOC_ID = 'fc55c46d-c109-4ccd-bf66-9f1d0e135689';
 
 interface MenuPluginConfig
@@ -429,6 +433,12 @@ export class OpenSCD extends LitElement {
 
   private loadPlugins() {
     const localPluginConfigs = this.getPluginConfigsFromLocalStorage();
+    let layoutCurrent = false;
+    try {
+      layoutCurrent = localStorage.getItem(DSB_LAYOUT_KEY) === DSB_LAYOUT_VERSION;
+    } catch (e) {
+      layoutCurrent = false;
+    }
 
     const overwritesOfBultInPlugins = localPluginConfigs.filter(p => {
       return this.getBuiltInPlugins().some(b => b.src === p.src);
@@ -442,16 +452,27 @@ export class OpenSCD extends LitElement {
         p => p.src === builtInPlugin.src
       );
 
+      // DSB: los datos del plugin (nombre, ícono, tipo) siempre vienen de la
+      // lista integrada; del navegador solo se conserva si está activo, y solo
+      // dentro de la misma versión de la distribución de pestañas.
+      const keepActive = layoutCurrent && overwrite?.active !== undefined;
       const mergedPlugin: Plugin = {
-        ...builtInPlugin,
         ...overwrite,
-        active: overwrite?.active ?? builtInPlugin.activeByDefault,
+        ...builtInPlugin,
+        active: keepActive
+          ? overwrite!.active
+          : builtInPlugin.activeByDefault,
       };
 
       return mergedPlugin;
     });
 
     const mergedPlugins = [...mergedBuiltInPlugins, ...userInstalledPlugins];
+    try {
+      localStorage.setItem(DSB_LAYOUT_KEY, DSB_LAYOUT_VERSION);
+    } catch (e) {
+      /* sin almacenamiento: se usa la distribución por defecto */
+    }
 
     this.updateStoredPlugins(mergedPlugins);
   }

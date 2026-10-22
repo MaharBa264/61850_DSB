@@ -324,7 +324,7 @@ export default class DsbSldPlugin extends LitElement {
         ${this.renderPanel()}
       </div>
       ${!this.model.groups.length
-        ? html`<p class="empty">No hay subestación. Créela en la pestaña "Proyecto (DSB)".</p>`
+        ? html`<p class="empty">No hay subestación. Créela en la pestaña "1. Proyecto".</p>`
         : ''}`;
   }
 

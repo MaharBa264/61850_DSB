@@ -312,7 +312,7 @@ export default class DsbProjectPlugin extends LitElement {
     this.emit(edits, `Transformador ${name}`);
     this.trName = '';
     this.touched = false;
-    this.message = `Transformador "${name}" agregado con sus campos. Véalo en "Unifilar (DSB)".`;
+    this.message = `Transformador "${name}" agregado con sus campos. Véalo en "2. Unifilar".`;
   }
 
   private voltage(vl: Element): string {

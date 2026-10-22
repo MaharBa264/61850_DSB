@@ -112,3 +112,8 @@ Etapas:
 - Paquetes típicos (propuesta inicial, **no** norma EDESAL): línea ≥66 kV: 21, 67, 67N, 25; línea menor: 50/51, 50N/51N; más 79, 50BF, 94, CSWI, CILO, XCBR. Alimentador: 50/51, 50N/51N, 79, 81U, 94. Trafo: 87T, 49, YPTR, YLTC, 90.
 - Salidas: lista detallada CSV, resumen CSV (por grupo; protección+automatismo dimensionan IEDs) y SSD (SCD sin IED/Communication), validado contra el XSD 2007B4.
 - Los campos de trafo de 132 kV no llevan 87T propio: va en el `PowerTransformer`.
+
+## Barra de pestañas (flujo de trabajo)
+
+Pestañas activas por defecto, en el orden del flujo: 1. Proyecto, 2. Unifilar, 3. Funciones, 4. IEDs, 5. Red y comunicación, 6. MMS (reportes), 7. GOOSE, más el Explorador de comunicación. Quedan desactivadas (se activan desde la configuración de plugins) las duplicadas o de otra práctica: Subestación, Diagrama unifilar de CoMPAS, Plantillas, Versiones CoMPAS, ambos Generadores de plantillas, Sitipe, Asistente de ingeniería y la generación automática de subestación.
+`DSB_LAYOUT_VERSION` (en `src/open-scd.ts`) hace que, al cambiar la distribución, se descarten las activaciones guardadas en el navegador; nombre, ícono y orden siempre vienen de `public/js/plugins.js`.
