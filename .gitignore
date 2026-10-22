@@ -29,3 +29,6 @@ node_modules/
 
 # environment variables
 .env
+
+## servidor DSB (se instala con npm, fuera del workspace de pnpm)
+/server/node_modules/

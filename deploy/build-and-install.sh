@@ -4,6 +4,7 @@
 #   ./deploy/build-and-install.sh                 # git pull + compilar + instalar
 #   DSB_PORT=8096 ./deploy/build-and-install.sh   # puerto distinto del 8095
 #   DSB_NO_PULL=1 ./deploy/build-and-install.sh   # sin git pull (usar lo que ya está clonado)
+#   DSB_API_PORT=3095 ...                          # puerto interno del servidor de proyectos (solo 127.0.0.1)
 # Requisitos: git, Node.js >= 22 y npm (sudo dnf install -y nodejs npm), salida a internet.
 # pnpm se instala SOLO en tu usuario (~/.local), sin tocar el sistema.
 set -euo pipefail
@@ -32,7 +33,11 @@ main() {
 
   local tar=/tmp/dsb-dist.tar.gz
   tar -czf "$tar" -C dist .
-  sudo env DSB_PORT="${DSB_PORT:-8095}" bash deploy/install-rocky.sh "$tar"
+  local star=/tmp/dsb-server.tar.gz
+  tar -czf "$star" -C server --exclude=node_modules .
+  # primero el servidor de proyectos (crea el servicio y la base), después nginx con el proxy /api
+  sudo env DSB_API_PORT="${DSB_API_PORT:-3095}" bash deploy/install-api.sh "$star"
+  sudo env DSB_PORT="${DSB_PORT:-8095}" DSB_API_PORT="${DSB_API_PORT:-3095}" bash deploy/install-rocky.sh "$tar"
 }
 # Todo el cuerpo está en una función para que 'git pull' no altere el script mientras se ejecuta
 main "$@"

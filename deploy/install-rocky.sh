@@ -9,6 +9,7 @@ set -euo pipefail
 
 PKG="${1:-}"
 PORT="${DSB_PORT:-8095}"
+API_PORT="${DSB_API_PORT:-3095}"
 WEBROOT=/var/www/dsb
 CONF=/etc/dsb/nginx.conf
 UNIT=/etc/systemd/system/dsb-nginx.service
@@ -29,7 +30,7 @@ command -v /usr/sbin/nginx >/dev/null || dnf -y install nginx
 
 # 3) Configuración y servicio propios
 install -d -m 755 /etc/dsb
-sed "s/@PORT@/${PORT}/g" "$HERE/dsb-nginx.conf" > "$CONF"
+sed -e "s/@PORT@/${PORT}/g" -e "s/@API_PORT@/${API_PORT}/g" "$HERE/dsb-nginx.conf" > "$CONF"
 chmod 644 "$CONF"
 install -m 644 "$HERE/dsb-nginx.service" "$UNIT"
 
@@ -51,6 +52,14 @@ if command -v getenforce >/dev/null && [[ "$(getenforce)" != "Disabled" ]]; then
   if ! semanage port -l 2>/dev/null | grep -E "^http_port_t" | grep -qw "$PORT"; then
     command -v semanage >/dev/null || dnf -y install policycoreutils-python-utils
     semanage port -a -t http_port_t -p tcp "$PORT" 2>/dev/null || semanage port -m -t http_port_t -p tcp "$PORT"
+  fi
+fi
+
+# nginx (httpd_t) debe poder conectarse al servidor de la API en 127.0.0.1:$API_PORT
+if command -v getenforce >/dev/null && [[ "$(getenforce)" != "Disabled" ]]; then
+  if ! semanage port -l 2>/dev/null | grep -E "^http_port_t" | grep -qw "$API_PORT"; then
+    command -v semanage >/dev/null || dnf -y install policycoreutils-python-utils
+    semanage port -a -t http_port_t -p tcp "$API_PORT" 2>/dev/null || semanage port -m -t http_port_t -p tcp "$API_PORT"
   fi
 fi
 

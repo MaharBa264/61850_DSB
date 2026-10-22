@@ -1,0 +1,22 @@
+[Unit]
+Description=DSB (61850) - servidor de usuarios, proyectos y versiones
+After=network-online.target postgresql.service
+Wants=network-online.target
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=dsb
+Group=dsb
+WorkingDirectory=/opt/dsb/server
+EnvironmentFile=/etc/dsb/api.env
+ExecStart=@NODE@ /opt/dsb/server/src/main.mjs
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

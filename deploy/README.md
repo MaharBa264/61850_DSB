@@ -1,7 +1,7 @@
 # Despliegue de DSB en Rocky Linux 8.10 (172.17.1.170)
 
-La app es 100 % estática (HTML/JS): para *ejecutarla* solo hace falta **nginx** (sin Java ni base de datos). Node.js solo se necesita si
-se compila en el servidor (opción A); con la opción B no hace falta.
+La app web es estática (HTML/JS) y se sirve con **nginx**. Desde la versión con usuarios y proyectos hay además un **servidor de proyectos**
+(servicio `dsb-api`: Node.js + PostgreSQL) al que nginx le pasa `/api`. Ver la sección "Usuarios, proyectos y versiones" más abajo.
 
 **Puerto: 8095** (el 80 ya lo usa otra aplicación). Se instala un nginx **dedicado** (servicio `dsb-nginx`, config en `/etc/dsb/`) que
 **no modifica** `/etc/nginx` ni el servicio existente. Antes de instalar, ver si el puerto está libre:
@@ -63,6 +63,24 @@ ssh TU_USUARIO@172.17.1.170
 sudo bash /tmp/deploy/install-rocky.sh /tmp/dsb-dist.tar.gz
 ```
 
+## Usuarios, proyectos y versiones (servicio `dsb-api`)
+
+`build-and-install.sh` instala también el servidor de proyectos (`deploy/install-api.sh`):
+
+- **PostgreSQL**: si el servidor ya lo tiene instalado se usa tal cual (solo se agrega el rol y la base `dsb`; no se toca nada más); si no, instala el módulo `postgresql:15` de Rocky.
+  El servicio entra a la base por el **socket local** con el usuario del sistema `dsb` (autenticación `peer`): no hay contraseña de base que guardar.
+- **Servicio** `dsb-api` (usuario `dsb`, solo escucha en `127.0.0.1:3095`), código en `/opt/dsb/server`, configuración en `/etc/dsb/api.env`.
+- **Usuario inicial**: al terminar el primer despliegue se muestra **una sola vez** el usuario `admin` y su contraseña temporal (se obliga a cambiarla al ingresar).
+  Si se pierde: `sudo -u postgres psql dsb -c "DELETE FROM users WHERE username='admin'"` y `sudo systemctl restart dsb-api` genera uno nuevo solo si no queda ningún usuario;
+  en otro caso, otro administrador la restablece desde la pestaña *Usuarios*.
+- **Respaldo diario** a las 02:30 (`dsb-backup.timer`) en `/var/backups/dsb`, 30 días. Contiene usuarios, proyectos y **todas las versiones**.
+  Probar a mano: `sudo /usr/local/sbin/dsb-backup.sh`. Restaurar: `sudo -u postgres pg_restore --clean --if-exists -d dsb /var/backups/dsb/ARCHIVO.dump`.
+  Conviene copiar esa carpeta periódicamente a otro equipo.
+- **HTTPS**: hoy se sirve por HTTP en la red interna, por lo que la contraseña y la sesión viajan sin cifrar. Antes de uso real conviene un certificado interno en el nginx
+  y poner `DSB_SECURE_COOKIE=1` en `/etc/dsb/api.env` (luego `sudo systemctl restart dsb-api`).
+- Diagnóstico: `systemctl status dsb-api`, `journalctl -u dsb-api -n 40`, `curl http://127.0.0.1:3095/api/health`, `sudo ausearch -m avc -ts recent` (SELinux).
+- La opción B (sin internet) no instala el servidor de proyectos: necesita `npm ci` con acceso al registro de npm.
+
 ## Qué hace el instalador
 
 `install-rocky.sh` (lo llama la opción A) instala el paquete `nginx` (sin habilitar el servicio estándar), crea el servicio
@@ -78,7 +96,7 @@ systemctl status dsb-nginx
 cat /var/www/dsb/VERSION        # commit publicado
 ```
 
-Abrir `http://172.17.1.170:8095/` → *Open project* → cargar un SCD → pestaña **Editor GOOSE (DSB)**.
+Abrir `http://172.17.1.170:8095/` → iniciar sesión → *Nuevo proyecto* (vacío o desde un archivo SCD) → pestañas numeradas del 1 al 7.
 
 ## Actualizar a una versión nueva
 Repetir los pasos 1 y 2 (el script es idempotente). Para volver atrás:

@@ -11,7 +11,7 @@ IEC 61850 en EDESAL. Remotes: `origin` = este repo, `upstream` = com-pas/compas-
 | 2 | Uso interno en EDESAL, sin distribución externa | Habilita usar libIEC61850 (GPLv3) si hiciera falta |
 | 3 | Código propio **aislado en `src/dsb/`**; ediciones al código de CoMPAS limitadas a 3 puntos de enganche (`src/open-scd.ts`, `public/js/plugins.js`, `web-test-runner.config.mjs`) | Poder hacer `git merge upstream/main` sin conflictos |
 | 4 | **Modernización del frontend gradual** (lit-element 2.5 / mwc 0.22 hoy). Nada de migraciones masivas | No perder actualizaciones de upstream |
-| 5 | Backend propio y liviano (usuarios, proyectos, versiones del SCD) en una fase posterior | Los servicios Java de CoMPAS son pesados de operar |
+| 5 | Backend propio y liviano (usuarios, proyectos, versiones del SCD): hecho, ver "Usuarios, proyectos y versiones" | Los servicios Java de CoMPAS son pesados de operar |
 | 6 | Servidor de producción: **172.17.1.170, Rocky Linux 8.10** | Dato del usuario |
 | 7 | **172.17.1.171** (GPU L4, Ubuntu más nuevo): reservado para funciones de IA, **no inmediato** | Dato del usuario |
 
@@ -129,3 +129,16 @@ Pestañas activas por defecto, en el orden del flujo: 1. Proyecto, 2. Unifilar, 
 - Verificación por campo/transformador: cada clase LN requerida (LNode de etapa C) contra la suma de capacidades de sus IEDs; E/S estimadas con una regla simple (2 DI por XCBR/XSWI, 2 DO por CSWI, 4 canales por TCTR, 3 por TVTR; ajustable en `estimateIo`).
 - "Asignar automáticamente" elige, para cada objeto sin IED, el modelo más barato que cubre todo; lista de materiales exportable a CSV.
 - Los nombres de IED son únicos en el proyecto y válidos como nombre SCL.
+
+## Usuarios, proyectos y versiones (servidor)
+
+Decisiones (Abraham): usuarios locales creados por el administrador (AD/LDAP queda para después); proyecto **privado**, **compartido** (usuarios elegidos como lector o editor) o **libre** (cualquiera ve y duplica; solo dueño y editores elegidos modifican); **PostgreSQL**; **un editor a la vez** por proyecto (bloqueo).
+
+- Código: `server/` (Node + Fastify + pg, fuera del workspace de pnpm, con su `package-lock.json`); cliente en `src/dsb/lib/api.ts`, `lib/session.ts`, `gate.ts` (login, explorador de proyectos, permisos, usuarios, auditoría), `editors/VersionsEditor.ts` (pestaña "Versiones"), `menu/ProjectsMenu.ts`.
+- Versiones: foto completa gzip inmutable por versión (padre, autor, mensaje, SHA-256). "Guardar" automático = **borrador** (uno por usuario y proyecto, cada 30 s si hay cambios); "Crear versión" sella con mensaje obligatorio y descarta el borrador. No se crean versiones vacías (mismo SHA). Restaurar = versión nueva copiada de una vieja. Hitos con nombre sobre una versión. Alternativas de diseño = duplicar el proyecto desde una versión (no hay ramas ni fusión de SCL).
+- Concurrencia: bloqueo con vencimiento (120 s, renovado cada 30 s); guardar exige tener el bloqueo y que la base sea la última versión (si no, 409); dos guardados simultáneos se serializan con `SELECT ... FOR UPDATE`.
+- Solo lectura: el cliente protege `editor.commit` (`guardEditor` en `open-scd.ts`), por donde pasan todas las ediciones; el servidor además rechaza guardar sin permiso o sin bloqueo.
+- Sin servidor (`/api` no responde con JSON o da 404) la app funciona en "modo local" como antes. Si el servidor falla (502, red), no se edita, para no perder trabajo.
+- Los menús de CoMPAS para abrir/guardar (que dependen de su backend) quedan desactivados; se reemplazan por "Proyectos del servidor".
+- Auditoría: login (y fallidos), usuarios, proyectos, visibilidad y permisos, versiones, restauraciones, hitos, bloqueos forzados.
+- Pendiente: comparación de versiones por elementos ("se agregó el campo L3"), exportar un proyecto completo con todas sus versiones, HTTPS, AD/LDAP.

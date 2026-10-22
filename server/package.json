@@ -1,0 +1,16 @@
+{
+  "name": "dsb-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Servidor de usuarios, proyectos y versiones de 61850_DSB",
+  "scripts": {
+    "start": "node src/main.mjs",
+    "test": "node --test test/api.test.mjs"
+  },
+  "engines": { "node": ">=22" },
+  "dependencies": {
+    "fastify": "5.12.7",
+    "pg": "8.16.3"
+  }
+}

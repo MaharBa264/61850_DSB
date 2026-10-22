@@ -1,0 +1,6 @@
+[Unit]
+Description=DSB (61850) - respaldo de la base de datos
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/dsb-backup.sh

@@ -47,10 +47,12 @@ import { languages, loader } from './translations/loader.js';
 import { registerOscdPlugins, OscdPluginSrc } from './oscd-plugins.js';
 import { registerCompasPlugins, CompasPluginSrc } from './compas-plugins.js';
 import { registerDsbPlugins, DsbPluginSrc } from './dsb/dsb-plugins.js';
+import './dsb/gate.js';
+import { session as dsbSession } from './dsb/lib/session.js';
 
 /** Versión de la distribución de pestañas; subirla restablece qué pestañas están activas. */
 const DSB_LAYOUT_KEY = 'dsb-layout-version';
-const DSB_LAYOUT_VERSION = '3';
+const DSB_LAYOUT_VERSION = '4';
 
 const LNODE_LIB_DOC_ID = 'fc55c46d-c109-4ccd-bf66-9f1d0e135689';
 
@@ -64,6 +66,21 @@ interface EditorPluginConfig
   extends Omit<Plugin, 'position' | 'kind' | 'active'> {
   position?: undefined;
   active?: boolean;
+}
+
+/**
+ * DSB: todas las ediciones pasan por `editor.commit`. Con un proyecto del
+ * servidor abierto en solo lectura (o con el bloqueo perdido) se descartan.
+ */
+function guardEditor(editor: XMLEditor): XMLEditor {
+  const commit = editor.commit.bind(editor);
+  editor.commit = ((change: Parameters<XMLEditor['commit']>[0], opts?: Parameters<XMLEditor['commit']>[1]) => {
+    if (dsbSession.project && dsbSession.readOnly) {
+      return { undo: [], redo: [], time: Date.now() };
+    }
+    return commit(change, opts);
+  }) as XMLEditor['commit'];
+  return editor;
 }
 
 /** The `<open-scd>` custom element is the main entry point of the
@@ -89,6 +106,7 @@ export class OpenSCD extends LitElement {
                 .editCount=${this.editCount}
                 .editor=${this.editor}
               >
+                <dsb-gate .host=${this} .editCount=${this.editCount}>
                 <compas-layout
                   @add-external-plugin=${this.handleAddExternalPlugin}
                   @oscd-configure-plugin=${this.handleConfigurationPluginEvent}
@@ -103,6 +121,7 @@ export class OpenSCD extends LitElement {
                   .compasApi=${this.compasApi}
                 >
                 </compas-layout>
+                </dsb-gate>
               </oscd-editor>
             </oscd-history>
           </oscd-wizards>
@@ -118,7 +137,7 @@ export class OpenSCD extends LitElement {
   /** The UUID of the current [[`doc`]] */
   @property({ type: String }) docId = '';
 
-  editor = new XMLEditor();
+  editor = guardEditor(new XMLEditor());
 
   /** Object containing all *.nsdoc files and a function extracting element's label form them*/
   @property({ attribute: false })
