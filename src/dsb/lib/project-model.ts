@@ -16,6 +16,10 @@ export const DSB_PRIVATE_TYPE = 'DSB-Project';
 
 /** Separación vertical (en celdas) entre niveles de tensión en el unifilar. */
 const VOLTAGE_LEVEL_ROW_SPAN = 12;
+/** Filas entre el nivel de mayor tensión y el siguiente cuando hay transformador en cascada. */
+export const CASCADE_FIRST_SPAN = 15;
+/** Fila (relativa al nivel) del campo de transformador "invertido" (arriba de la barra). */
+const INVERTED_BAY_ROW = -5;
 /** Fila (relativa al nivel de tensión) donde empiezan los campos. */
 const BAY_ROW = 2;
 /** Primera columna de campos (las anteriores quedan para transformadores y su corredor). */
@@ -43,6 +47,12 @@ export interface LineBaySpec {
   column: number;
   /** Incluye transformador de tensión. */
   withVT?: boolean;
+  /**
+   * Solo plantilla `trafo`: el campo cuelga *encima* de la barra (el transformador
+   * queda arriba y la barra abajo), como se dibuja en los niveles inferiores de
+   * una cascada 132/33/13,2 kV.
+   */
+  inverted?: boolean;
 }
 
 /** Valida un nombre SCL usado en rutas (`Subestación/Nivel/Campo`). */
@@ -227,7 +237,31 @@ function commonBayEquipment(busbarCount: number): { eq: EquipSpec[]; cx: number 
  *  - alimentador: barras, interruptor, TC y seccionador de salida;
  *  - trafo: barras, interruptor y TC; el nodo final `L3` se conecta al arrollamiento.
  */
-function bayEquipment(template: BayTemplate, busbarCount: number, withVT: boolean): EquipSpec[] {
+function invertedTrafoEquipment(busbarCount: number): EquipSpec[] {
+  const cx = Math.max(busbarCount, 1);
+  const eq: EquipSpec[] = [
+    { name: 'TC1', type: 'CTR', desc: 'Transformador de corriente', x: cx, y: 1, terminals: ['L3', 'L2'] },
+    { name: 'QA1', type: 'CBR', desc: 'Interruptor', x: cx, y: 3, terminals: ['L2', 'L1'] },
+  ];
+  for (let i = 0; i < busbarCount; i++)
+    eq.push({
+      name: `QB${i + 1}`,
+      type: 'DIS',
+      desc: `Seccionador de barra ${i + 1}`,
+      x: busbarCount === 1 ? cx : 1 + 2 * i,
+      y: 5,
+      terminals: ['L1', `bus:${i}`],
+    });
+  return eq;
+}
+
+function bayEquipment(
+  template: BayTemplate,
+  busbarCount: number,
+  withVT: boolean,
+  inverted = false
+): EquipSpec[] {
+  if (template === 'trafo' && inverted) return invertedTrafoEquipment(busbarCount);
   const { eq, cx } = commonBayEquipment(busbarCount);
   if (template === 'trafo') return eq;
   eq.push({ name: 'QB9', type: 'DIS', desc: template === 'linea' ? 'Seccionador de línea' : 'Seccionador de salida', x: cx, y: 7, terminals: ['L3'] });
@@ -259,10 +293,10 @@ export function createBay(
 ): Element {
   const bayName = spec.name.trim();
   const bay = el(doc, 'Bay', { name: bayName });
-  setXY(bay, spec.column, BAY_ROW);
+  setXY(bay, spec.column, spec.template === 'trafo' && spec.inverted ? INVERTED_BAY_ROW : BAY_ROW);
 
   const nodes = new Set<string>();
-  for (const e of bayEquipment(spec.template, spec.busbars.length, !!spec.withVT)) {
+  for (const e of bayEquipment(spec.template, spec.busbars.length, !!spec.withVT, !!spec.inverted)) {
     const ce = el(doc, 'ConductingEquipment', { name: e.name, type: e.type, desc: e.desc });
     setXY(ce, e.x, e.y);
     e.terminals.forEach((t, i) => {
@@ -336,4 +370,45 @@ export function createPowerTransformer(
     pt.appendChild(tw);
   });
   return pt;
+}
+
+/** Tensión nominal (kV) de un nivel; 0 si no se puede leer. */
+function levelKV(vl: Element): number {
+  return parseFloat(vl.querySelector(':scope > Voltage')?.textContent ?? '0') || 0;
+}
+
+/**
+ * Posición del transformador en cascada: debajo del campo de transformador del
+ * nivel de mayor tensión, alineado con su TC. Devuelve celdas absolutas.
+ */
+export function transformerPlacement(
+  highVoltageLevel: Element,
+  bayColumn: number
+): { x: number; y: number } {
+  const busbars = Math.max(listBusbars(highVoltageLevel).length, 1);
+  let x = 0;
+  let y = 0;
+  for (let n: Element | null = highVoltageLevel; n && n.tagName !== 'SCL'; n = n.parentElement) {
+    x += parseInt(n.getAttributeNS(SXY_NS, 'x') ?? '0', 10) || 0;
+    y += parseInt(n.getAttributeNS(SXY_NS, 'y') ?? '0', 10) || 0;
+  }
+  return { x: x + bayColumn + busbars, y: y + 9 };
+}
+
+/**
+ * Filas (sxy:y) de los niveles de tensión para el dibujo en cascada: el de
+ * mayor tensión conserva su fila y los demás se apilan debajo, dejando lugar
+ * al transformador y a los campos de transformador invertidos.
+ */
+export function cascadeRows(substation: Element): { element: Element; y: number }[] {
+  const vls = Array.from(substation.children)
+    .filter(c => c.tagName === 'VoltageLevel')
+    .sort((a, b) => levelKV(b) - levelKV(a));
+  const out: { element: Element; y: number }[] = [];
+  let y = parseInt(vls[0]?.getAttributeNS(SXY_NS, 'y') ?? '1', 10) || 1;
+  vls.forEach((vl, i) => {
+    if (i > 0) y += i === 1 ? CASCADE_FIRST_SPAN : VOLTAGE_LEVEL_ROW_SPAN;
+    out.push({ element: vl, y });
+  });
+  return out;
 }

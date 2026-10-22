@@ -158,9 +158,11 @@ describe('DSB sld-model barras', () => {
 });
 
 import {
+  cascadeRows,
   createBay,
   createPowerTransformer,
   suggestTransformerBayName,
+  transformerPlacement,
 } from '../../../src/dsb/lib/project-model.js';
 
 function etapa(): { doc: XMLDocument; sub: Element } {
@@ -173,20 +175,24 @@ function etapa(): { doc: XMLDocument; sub: Element } {
   [['J1', 132], ['J2', 33], ['J3', 13.2]].forEach(([n, kv], i) =>
     sub.appendChild(createVoltageLevel(doc, 'ETSL', { name: n as string, kV: kv as number, busbars: 1 }, 1 + 12 * i))
   );
-  const windings = Array.from(sub.querySelectorAll('VoltageLevel')).map(vl => {
+  const vls = Array.from(sub.querySelectorAll('VoltageLevel'));
+  const column = suggestColumn(vls[0]);
+  const windings = vls.map((vl, i) => {
     const lv = vl.getAttribute('name')!;
     const bayName = suggestTransformerBayName('TR1', vl.querySelector('Voltage')!.textContent!);
     vl.appendChild(
       createBay(doc, { substation: 'ETSL', voltageLevel: lv }, {
-        name: bayName, busbars: listBusbars(vl), column: suggestColumn(vl), template: 'trafo',
+        name: bayName, busbars: listBusbars(vl), column: suggestColumn(vl), template: 'trafo', inverted: i > 0,
       })
     );
     return { voltageLevel: lv, bayName };
   });
+  const pos = transformerPlacement(vls[0], column);
   sub.insertBefore(
-    createPowerTransformer(doc, 'ETSL', { name: 'TR1', desc: '132/33/13.2 kV', windings }, 0, 17),
+    createPowerTransformer(doc, 'ETSL', { name: 'TR1', desc: '132/33/13.2 kV', windings }, pos.x, pos.y),
     sub.querySelector('VoltageLevel')
   );
+  for (const r of cascadeRows(sub)) r.element.setAttributeNS(SXY_NS, 'sxy:y', String(r.y));
   return { doc, sub };
 }
 
@@ -232,5 +238,37 @@ describe('DSB plantillas de trafo y alimentador', () => {
     // cada arrollamiento aporta una ruta de varios tramos: más que solo las de barra
     expect(wires.prims.filter(p => p.k === 'line').length).to.be.greaterThan(15);
     expect(m.groups.filter(g => g.kind === 'bay')).to.have.length(3);
+  });
+
+  it('los campos inferiores cuelgan encima de la barra (TC, interruptor, seccionador)', () => {
+    const { sub } = etapa();
+    const bay = sub.querySelector('Bay[name="TR1_33"]')!;
+    const types = Array.from(bay.querySelectorAll('ConductingEquipment')).map(e => e.getAttribute('type'));
+    expect(types).to.deep.equal(['CTR', 'CBR', 'DIS']);
+    // el TC conecta al nodo L3 (lado transformador) y el seccionador a la barra
+    expect(bay.querySelector('ConductingEquipment[name="TC1"] Terminal[name="T1"]')!.getAttribute('cNodeName')).to.equal('L3');
+    expect(bay.querySelector('ConductingEquipment[name="QB1"] Terminal[name="T2"]')!.getAttribute('connectivityNode')).to.equal('ETSL/J2/BB1/L1');
+  });
+
+  it('los niveles se apilan en cascada y el transformador queda alineado con el TC superior', () => {
+    const { sub } = etapa();
+    const ys = Array.from(sub.querySelectorAll('VoltageLevel')).map(v => parseInt(v.getAttributeNS(SXY_NS, 'y')!, 10));
+    expect(ys[1] - ys[0]).to.equal(15);
+    expect(ys[2]).to.be.greaterThan(ys[1]);
+    const m = buildSldModel(sub);
+    const tc = m.groups.find(g => g.id === 'ETSL/J1/TR1_132/TC1')!;
+    const tr = m.groups.find(g => g.kind === 'transformer')!;
+    const cxTc = (tc.prims[0] as any).x1;
+    const cxTr = (tr.prims[0] as any).x1; // terminal superior del transformador
+    expect(cxTr).to.equal(cxTc);
+  });
+
+  it('el tercer arrollamiento baja por un corredor a la izquierda de los campos', () => {
+    const { sub } = etapa();
+    const m = buildSldModel(sub);
+    const bayLeft = 4 * CELL; // VL en x=1 + primera columna de campos (3)
+    const wires = (m.groups.find(g => g.kind === 'wire')!.prims.filter(p => p.k === 'line') as any[]);
+    const corridor = wires.filter(l => l.x1 === l.x2 && l.x1 < bayLeft && Math.abs(l.y2 - l.y1) > 4 * CELL);
+    expect(corridor.length).to.be.greaterThan(0);
   });
 });

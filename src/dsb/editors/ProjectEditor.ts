@@ -18,6 +18,7 @@ import { newEditEventV2 } from '@compas-oscd/core';
 import {
   BAY_TEMPLATES,
   BayTemplate,
+  cascadeRows,
   createBay,
   createPowerTransformer,
   createProjectPrivate,
@@ -30,6 +31,7 @@ import {
   missingRootNamespaces,
   suggestColumn,
   suggestTransformerBayName,
+  transformerPlacement,
   suggestVoltageLevelRow,
   validateKV,
   validateName,
@@ -243,42 +245,60 @@ export default class DsbProjectPlugin extends LitElement {
       return;
     }
     const subName = sub.getAttribute('name') ?? '';
-    const edits: Parameters<typeof newEditEventV2>[0][] = [...namespaceEdits(this.doc)];
-    const windings = [];
     for (const lv of levels) {
       const vl = this.voltageLevels.find(v => v.getAttribute('name') === lv)!;
-      const busbars = listBusbars(vl);
-      if (!busbars.length) {
+      if (!listBusbars(vl).length) {
         this.message = `El nivel ${lv} no tiene barras.`;
         return;
       }
-      const bayName = suggestTransformerBayName(name, this.voltage(vl));
-      if (vl.querySelector(`:scope > Bay[name="${bayName}"]`)) {
-        this.message = `Ya existe el campo "${bayName}" en ${lv}.`;
+      const bn = suggestTransformerBayName(name, this.voltage(vl));
+      if (vl.querySelector(`:scope > Bay[name="${bn}"]`)) {
+        this.message = `Ya existe el campo "${bn}" en ${lv}.`;
         return;
+      }
+    }
+    const edits: Parameters<typeof newEditEventV2>[0][] = [...namespaceEdits(this.doc)];
+    const windings: { voltageLevel: string; bayName: string }[] = [];
+    let high: Element | undefined;
+    let highColumn = 0;
+    levels.forEach((lv, i) => {
+      const vl = this.voltageLevels.find(v => v.getAttribute('name') === lv)!;
+      const bayName = suggestTransformerBayName(name, this.voltage(vl));
+      const column = suggestColumn(vl);
+      if (i === 0) {
+        high = vl;
+        highColumn = column;
       }
       edits.push({
         parent: vl,
         node: createBay(
           this.doc,
           { substation: subName, voltageLevel: lv },
-          { name: bayName, busbars, column: suggestColumn(vl), template: 'trafo' }
+          { name: bayName, busbars: listBusbars(vl), column, template: 'trafo', inverted: i > 0 }
         ),
         reference: null,
       });
       windings.push({ voltageLevel: lv, bayName });
-    }
+    });
     const n = sub.querySelectorAll(':scope > PowerTransformer').length;
-    const mid = this.vlsByVoltage[1] ?? this.vlsByVoltage[0];
-    const row = parseInt(mid.getAttributeNS(SXY_NS, 'y') ?? '1', 10) + 4;
-    const desc = levels
-      .map(lv => this.voltage(this.voltageLevels.find(v => v.getAttribute('name') === lv)!))
-      .join('/') + ' kV';
+    const desc =
+      levels
+        .map(lv => this.voltage(this.voltageLevels.find(v => v.getAttribute('name') === lv)!))
+        .join('/') + ' kV';
+    const pos = transformerPlacement(high!, highColumn);
     edits.push({
       parent: sub,
-      node: createPowerTransformer(this.doc, subName, { name, desc, windings }, Math.min(n, 1) * 2, row),
+      node: createPowerTransformer(this.doc, subName, { name, desc, windings }, pos.x, pos.y),
       reference: sub.querySelector(':scope > VoltageLevel'),
     });
+    // Reubicar los niveles en cascada (el de mayor tensión conserva su fila).
+    for (const r of cascadeRows(sub))
+      edits.push({
+        element: r.element,
+        attributes: {},
+        attributesNS: { [SXY_NS]: { 'sxy:y': String(r.y) } },
+      });
+    void n;
     this.emit(edits, `Transformador ${name}`);
     this.trName = '';
     this.touched = false;

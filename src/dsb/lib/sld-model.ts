@@ -68,7 +68,7 @@ export function symbolPrims(type: string, terminals: number): Prim[] {
 export function transformerPrims(windings: number): Prim[] {
   const m = CELL / 2;
   const p: Prim[] = [L(m, 0, m, 8), L(m, 52, m, 60), C(m, 22, 14), C(m, 38, 14)];
-  if (windings >= 3) p.push(C(m + 18, m, 14), L(m + 32, m, CELL, m));
+  if (windings >= 3) p.push(C(m - 18, m, 14), L(m - 32, m, 0, m));
   return p;
 }
 
@@ -96,6 +96,8 @@ interface Endpoint {
   y: number;
   /** `true` si el terminal sale por arriba. */
   top: boolean;
+  /** X (px) de la primera columna del campo al que pertenece el equipo. */
+  bayX?: number;
   /** Presente si el terminal es de un arrollamiento de transformador. */
   wd?: { dir: 'top' | 'bottom' | 'side'; idx: number; px: number; py: number };
 }
@@ -155,6 +157,7 @@ export function buildSldModel(substation: Element): SldModel {
         x: px + CELL / 2,
         y: top ? py : py + CELL,
         top,
+        bayX: ce.parentElement ? absXY(ce.parentElement).x * CELL : undefined,
       });
     });
     grow(px + CELL, py + CELL);
@@ -168,7 +171,7 @@ export function buildSldModel(substation: Element): SldModel {
     const windings = Array.from(pt.children).filter(c => c.tagName === 'TransformerWinding');
     const name = pt.getAttribute('name') ?? '';
     const prims = transformerPrims(windings.length).map(p => shift(p, px, py));
-    prims.push({ k: 'text', x: px, y: py + CELL + 12, t: name, size: 11 });
+    prims.push({ k: 'text', x: px + CELL / 2 + 18, y: py + CELL / 2 + 4, t: name, size: 11 });
     groups.push({ id: idOf(pt), kind: 'transformer', element: pt, label: name, type: 'PTR', prims });
     windings.forEach((w, i) => {
       const t = w.querySelector(':scope > Terminal');
@@ -179,7 +182,7 @@ export function buildSldModel(substation: Element): SldModel {
           ? { x: px + CELL / 2, y: py, top: true, wd }
           : i === 1
           ? { x: px + CELL / 2, y: py + CELL, top: false, wd }
-          : { x: px + CELL, y: py + CELL / 2, top: false, wd };
+          : { x: px, y: py + CELL / 2, top: false, wd };
       addEndpoint(t?.getAttribute('connectivityNode') ?? null, ep);
     });
     grow(px + CELL, py + CELL);
@@ -219,17 +222,19 @@ export function buildSldModel(substation: Element): SldModel {
     }
     if (eps.length < 2) continue;
     const winding = eps.find(e => e.wd);
-    if (winding?.wd) {
-      // Arrollamiento de transformador: ruta ortogonal por un corredor vertical.
-      const w = winding.wd;
-      const xc = w.px + CELL + 24 + 12 * w.idx;
+    if (winding?.wd?.dir === 'side') {
+      // Tercer arrollamiento: sale por la izquierda y baja por un corredor
+      // vertical a la izquierda de la primera columna del campo destino.
       for (const o of eps.filter(e => !e.wd)) {
+        const xc = (o.bayX ?? winding.x) - 24;
         const yo = o.y + (o.top ? -20 : 20);
-        const yw = w.dir === 'top' ? w.py - 20 : w.dir === 'bottom' ? w.py + CELL + 20 : w.py + CELL / 2;
-        wires.push(L(o.x, o.y, o.x, yo), L(o.x, yo, xc, yo), L(xc, yo, xc, yw));
-        if (w.dir === 'side') wires.push(L(xc, yw, winding.x, yw));
-        else wires.push(L(xc, yw, winding.x, yw), L(winding.x, yw, winding.x, winding.y));
-        wires.push(C(o.x, o.y, 3, true));
+        wires.push(
+          L(winding.x, winding.y, xc, winding.y),
+          L(xc, winding.y, xc, yo),
+          L(xc, yo, o.x, yo),
+          L(o.x, yo, o.x, o.y),
+          C(o.x, o.y, 3, true)
+        );
       }
       continue;
     }

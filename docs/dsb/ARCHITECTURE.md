@@ -98,5 +98,7 @@ Etapas:
 - Las plantillas generan SCL estándar con `sxy:x/sxy:y` y `Terminal`/`ConnectivityNode`, de modo que el resultado abre en cualquier otra herramienta.
 - La puesta a tierra usa `type="ERS"` (lo reconoce OpenSCD); a verificar contra herramientas de terceros.
 - La ubicación del proyecto se guarda en `Private type="DSB-Project"` (namespace `urn:edesal:dsb:1`).
-- Plantillas de campo: `linea`, `alimentador`, `trafo` (en `lib/project-model.ts`). El transformador (`PowerTransformer`, 2 o 3 arrollamientos) se conecta al nodo `L3` del campo de transformador de cada nivel; en el dibujo se ubica a la izquierda (columnas 0-2 reservadas) y sus conexiones van por corredores verticales. Crear primero los transformadores y luego los demás campos.
+- Plantillas de campo: `linea`, `alimentador`, `trafo` (en `lib/project-model.ts`).
+- Dibujo en cascada del transformador (`PowerTransformer`, 2 o 3 arrollamientos): el nivel de mayor tensión lleva su campo de transformador colgando de la barra; el transformador queda debajo, alineado con el TC; el 2.º arrollamiento baja recto al campo del nivel siguiente, que cuelga *encima* de su barra (`inverted`, `sxy:y` negativo). El 3.º arrollamiento sale por la izquierda y baja por un corredor a la izquierda de los campos hasta el tercer nivel. Los niveles se reubican con `cascadeRows` (15 filas entre el 1.º y el 2.º, 12 entre los siguientes).
+- Con 2 transformadores en paralelo, el corredor del 2.º cruza la barra del nivel intermedio (cruce sin conexión). Conviene crear primero los transformadores y luego los demás campos.
 - Sugerencia de nombre del campo de trafo: `<trafo>_<kV>` (ej. `TR1_132`, `TR1_13_2`).
