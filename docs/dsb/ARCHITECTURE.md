@@ -74,7 +74,7 @@ Etapas:
 | Etapa | Entregable |
 |---|---|
 | A (hecho) | Proyecto (nombre obligatorio; ubicación, descripción, niveles de tensión) + convención de nomenclatura |
-| B (en curso: plantilla de campo de línea y visor/editor propio con símbolos IEC, exportación SVG/DXF hechos; faltan plantillas de trafo 3 arrollamientos y alimentador, PDF) | Editor de unifilar con plantillas de campo, simbología IEC, edición libre; capas/bloques DXF definidos desde el inicio |
+| B (en curso: plantilla de campo de línea y visor/editor propio con símbolos IEC, exportación SVG/DXF hechos; plantillas de línea, alimentador y transformador de 2/3 arrollamientos hechas; falta PDF y alta de equipos sueltos) | Editor de unifilar con plantillas de campo, simbología IEC, edición libre; capas/bloques DXF definidos desde el inicio |
 | C | Funciones ANSI->LN por equipo (LNode iedName="None"); exportación SSD y lista de funciones para presupuesto |
 | D | Catálogo de IEDs (manual + ICD) y switches; verificación de capacidad |
 | E | RTU + red asistida (topología, IP/MAC/APPID/VLAN, carga, validación por subred) |
@@ -98,3 +98,5 @@ Etapas:
 - Las plantillas generan SCL estándar con `sxy:x/sxy:y` y `Terminal`/`ConnectivityNode`, de modo que el resultado abre en cualquier otra herramienta.
 - La puesta a tierra usa `type="ERS"` (lo reconoce OpenSCD); a verificar contra herramientas de terceros.
 - La ubicación del proyecto se guarda en `Private type="DSB-Project"` (namespace `urn:edesal:dsb:1`).
+- Plantillas de campo: `linea`, `alimentador`, `trafo` (en `lib/project-model.ts`). El transformador (`PowerTransformer`, 2 o 3 arrollamientos) se conecta al nodo `L3` del campo de transformador de cada nivel; en el dibujo se ubica a la izquierda (columnas 0-2 reservadas) y sus conexiones van por corredores verticales. Crear primero los transformadores y luego los demás campos.
+- Sugerencia de nombre del campo de trafo: `<trafo>_<kV>` (ej. `TR1_132`, `TR1_13_2`).

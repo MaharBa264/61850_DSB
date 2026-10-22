@@ -18,6 +18,8 @@ export const DSB_PRIVATE_TYPE = 'DSB-Project';
 const VOLTAGE_LEVEL_ROW_SPAN = 12;
 /** Fila (relativa al nivel de tensión) donde empiezan los campos. */
 const BAY_ROW = 2;
+/** Primera columna de campos (las anteriores quedan para transformadores y su corredor). */
+export const FIRST_BAY_COLUMN = 3;
 
 export interface ProjectInfo {
   name: string;
@@ -135,7 +137,7 @@ export function suggestColumn(voltageLevel: Element): number {
     const x = parseInt(bay.getAttributeNS(SXY_NS, 'x') ?? '0', 10);
     if (x > max) max = x;
   }
-  return max === 0 ? 1 : max + 6;
+  return max === 0 ? FIRST_BAY_COLUMN : max + 6;
 }
 
 /** Siguiente fila libre para un nivel de tensión nuevo. */
@@ -190,12 +192,16 @@ interface EquipSpec {
   terminals: string[];
 }
 
-/**
- * Plantilla "Campo de línea": seccionadores de barra, interruptor,
- * transformador de corriente, seccionador de línea, puesta a tierra y
- * (opcional) transformador de tensión.
- */
-function lineBayEquipment(busbarCount: number, withVT: boolean): EquipSpec[] {
+export type BayTemplate = 'linea' | 'alimentador' | 'trafo';
+
+export const BAY_TEMPLATES: { id: BayTemplate; label: string }[] = [
+  { id: 'linea', label: 'Campo de línea' },
+  { id: 'alimentador', label: 'Campo de alimentador' },
+  { id: 'trafo', label: 'Campo de transformador' },
+];
+
+/** Equipos comunes: seccionadores de barra, interruptor y transformador de corriente. */
+function commonBayEquipment(busbarCount: number): { eq: EquipSpec[]; cx: number } {
   const cx = Math.max(busbarCount, 1);
   const eq: EquipSpec[] = [];
   for (let i = 0; i < busbarCount; i++) {
@@ -210,12 +216,26 @@ function lineBayEquipment(busbarCount: number, withVT: boolean): EquipSpec[] {
   }
   eq.push(
     { name: 'QA1', type: 'CBR', desc: 'Interruptor', x: cx, y: 3, terminals: ['L1', 'L2'] },
-    { name: 'TC1', type: 'CTR', desc: 'Transformador de corriente', x: cx, y: 5, terminals: ['L2', 'L3'] },
-    { name: 'QB9', type: 'DIS', desc: 'Seccionador de línea', x: cx, y: 7, terminals: ['L3'] },
-    { name: 'QC9', type: 'ERS', desc: 'Puesta a tierra de línea', x: cx + 1, y: 7, terminals: ['L3'] }
+    { name: 'TC1', type: 'CTR', desc: 'Transformador de corriente', x: cx, y: 5, terminals: ['L2', 'L3'] }
   );
-  if (withVT)
-    eq.push({ name: 'TV1', type: 'VTR', desc: 'Transformador de tensión', x: cx + 2, y: 7, terminals: ['L3'] });
+  return { eq, cx };
+}
+
+/**
+ * Plantillas de campo:
+ *  - línea: barras, interruptor, TC, seccionador de línea, puesta a tierra y TV opcional;
+ *  - alimentador: barras, interruptor, TC y seccionador de salida;
+ *  - trafo: barras, interruptor y TC; el nodo final `L3` se conecta al arrollamiento.
+ */
+function bayEquipment(template: BayTemplate, busbarCount: number, withVT: boolean): EquipSpec[] {
+  const { eq, cx } = commonBayEquipment(busbarCount);
+  if (template === 'trafo') return eq;
+  eq.push({ name: 'QB9', type: 'DIS', desc: template === 'linea' ? 'Seccionador de línea' : 'Seccionador de salida', x: cx, y: 7, terminals: ['L3'] });
+  if (template === 'linea') {
+    eq.push({ name: 'QC9', type: 'ERS', desc: 'Puesta a tierra de línea', x: cx + 1, y: 7, terminals: ['L3'] });
+    if (withVT)
+      eq.push({ name: 'TV1', type: 'VTR', desc: 'Transformador de tensión', x: cx + 2, y: 7, terminals: ['L3'] });
+  }
   return eq;
 }
 
@@ -228,12 +248,21 @@ export function createLineBay(
   ctx: { substation: string; voltageLevel: string },
   spec: LineBaySpec
 ): Element {
+  return createBay(doc, ctx, { ...spec, template: 'linea' });
+}
+
+/** Crea un `Bay` a partir de una plantilla (línea, alimentador o transformador). */
+export function createBay(
+  doc: XMLDocument,
+  ctx: { substation: string; voltageLevel: string },
+  spec: LineBaySpec & { template: BayTemplate }
+): Element {
   const bayName = spec.name.trim();
   const bay = el(doc, 'Bay', { name: bayName });
   setXY(bay, spec.column, BAY_ROW);
 
   const nodes = new Set<string>();
-  for (const e of lineBayEquipment(spec.busbars.length, !!spec.withVT)) {
+  for (const e of bayEquipment(spec.template, spec.busbars.length, !!spec.withVT)) {
     const ce = el(doc, 'ConductingEquipment', { name: e.name, type: e.type, desc: e.desc });
     setXY(ce, e.x, e.y);
     e.terminals.forEach((t, i) => {
@@ -264,4 +293,47 @@ export function createLineBay(
       })
     );
   return bay;
+}
+
+export interface TransformerWindingSpec {
+  /** Nivel de tensión al que se conecta el arrollamiento. */
+  voltageLevel: string;
+  /** Nombre del campo de transformador creado en ese nivel. */
+  bayName: string;
+}
+
+/** Nombre sugerido para el campo de transformador de un nivel (ej. `TR1_132`). */
+export function suggestTransformerBayName(trafo: string, kV: string | number): string {
+  return `${trafo.trim()}_${String(kV).replace('.', '_').replace(',', '_')}`;
+}
+
+/**
+ * Transformador de potencia con 2 o 3 arrollamientos. Cada arrollamiento se
+ * conecta al nodo final (`L3`) del campo de transformador de su nivel.
+ */
+export function createPowerTransformer(
+  doc: XMLDocument,
+  substation: string,
+  spec: { name: string; desc?: string; windings: TransformerWindingSpec[] },
+  x: number,
+  y: number
+): Element {
+  const pt = el(doc, 'PowerTransformer', { name: spec.name.trim(), type: 'PTR' });
+  if (spec.desc?.trim()) pt.setAttribute('desc', spec.desc.trim());
+  setXY(pt, x, y);
+  spec.windings.forEach((w, i) => {
+    const tw = el(doc, 'TransformerWinding', { name: `W${i + 1}`, type: 'PTW' });
+    tw.appendChild(
+      el(doc, 'Terminal', {
+        name: 'T1',
+        connectivityNode: `${substation}/${w.voltageLevel}/${w.bayName}/L3`,
+        substationName: substation,
+        voltageLevelName: w.voltageLevel,
+        bayName: w.bayName,
+        cNodeName: 'L3',
+      })
+    );
+    pt.appendChild(tw);
+  });
+  return pt;
 }

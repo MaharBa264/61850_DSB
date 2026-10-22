@@ -96,6 +96,8 @@ interface Endpoint {
   y: number;
   /** `true` si el terminal sale por arriba. */
   top: boolean;
+  /** Presente si el terminal es de un arrollamiento de transformador. */
+  wd?: { dir: 'top' | 'bottom' | 'side'; idx: number; px: number; py: number };
 }
 
 function idOf(e: Element): string {
@@ -166,16 +168,18 @@ export function buildSldModel(substation: Element): SldModel {
     const windings = Array.from(pt.children).filter(c => c.tagName === 'TransformerWinding');
     const name = pt.getAttribute('name') ?? '';
     const prims = transformerPrims(windings.length).map(p => shift(p, px, py));
-    prims.push({ k: 'text', x: px - 4, y: py + CELL / 2 + 4, t: name, size: 11 });
+    prims.push({ k: 'text', x: px, y: py + CELL + 12, t: name, size: 11 });
     groups.push({ id: idOf(pt), kind: 'transformer', element: pt, label: name, type: 'PTR', prims });
     windings.forEach((w, i) => {
       const t = w.querySelector(':scope > Terminal');
+      const dir = i === 0 ? 'top' : i === 1 ? 'bottom' : 'side';
+      const wd = { dir, idx: i, px, py } as const;
       const ep: Endpoint =
         i === 0
-          ? { x: px + CELL / 2, y: py, top: true }
+          ? { x: px + CELL / 2, y: py, top: true, wd }
           : i === 1
-          ? { x: px + CELL / 2, y: py + CELL, top: false }
-          : { x: px + CELL, y: py + CELL / 2, top: false };
+          ? { x: px + CELL / 2, y: py + CELL, top: false, wd }
+          : { x: px + CELL, y: py + CELL / 2, top: false, wd };
       addEndpoint(t?.getAttribute('connectivityNode') ?? null, ep);
     });
     grow(px + CELL, py + CELL);
@@ -214,6 +218,21 @@ export function buildSldModel(substation: Element): SldModel {
       continue;
     }
     if (eps.length < 2) continue;
+    const winding = eps.find(e => e.wd);
+    if (winding?.wd) {
+      // Arrollamiento de transformador: ruta ortogonal por un corredor vertical.
+      const w = winding.wd;
+      const xc = w.px + CELL + 24 + 12 * w.idx;
+      for (const o of eps.filter(e => !e.wd)) {
+        const yo = o.y + (o.top ? -20 : 20);
+        const yw = w.dir === 'top' ? w.py - 20 : w.dir === 'bottom' ? w.py + CELL + 20 : w.py + CELL / 2;
+        wires.push(L(o.x, o.y, o.x, yo), L(o.x, yo, xc, yo), L(xc, yo, xc, yw));
+        if (w.dir === 'side') wires.push(L(xc, yw, winding.x, yw));
+        else wires.push(L(xc, yw, winding.x, yw), L(winding.x, yw, winding.x, winding.y));
+        wires.push(C(o.x, o.y, 3, true));
+      }
+      continue;
+    }
     const ys = eps.map(e => e.y);
     const xs = eps.map(e => e.x);
     const yRail = (Math.min(...ys) + Math.max(...ys)) / 2;

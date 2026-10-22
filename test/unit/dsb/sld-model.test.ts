@@ -156,3 +156,81 @@ describe('DSB sld-model barras', () => {
     expect(span('BB1')).to.deep.equal(span('BB2'));
   });
 });
+
+import {
+  createBay,
+  createPowerTransformer,
+  suggestTransformerBayName,
+} from '../../../src/dsb/lib/project-model.js';
+
+function etapa(): { doc: XMLDocument; sub: Element } {
+  const doc = new DOMParser().parseFromString(
+    '<SCL xmlns="http://www.iec.ch/61850/2003/SCL" xmlns:sxy="http://www.iec.ch/61850/2003/SCLcoordinates" version="2007" revision="B" release="4"><Header id="t"/></SCL>',
+    'application/xml'
+  );
+  const sub = createSubstation(doc, { name: 'ETSL', description: '', location: '' });
+  doc.documentElement.appendChild(sub);
+  [['J1', 132], ['J2', 33], ['J3', 13.2]].forEach(([n, kv], i) =>
+    sub.appendChild(createVoltageLevel(doc, 'ETSL', { name: n as string, kV: kv as number, busbars: 1 }, 1 + 12 * i))
+  );
+  const windings = Array.from(sub.querySelectorAll('VoltageLevel')).map(vl => {
+    const lv = vl.getAttribute('name')!;
+    const bayName = suggestTransformerBayName('TR1', vl.querySelector('Voltage')!.textContent!);
+    vl.appendChild(
+      createBay(doc, { substation: 'ETSL', voltageLevel: lv }, {
+        name: bayName, busbars: listBusbars(vl), column: suggestColumn(vl), template: 'trafo',
+      })
+    );
+    return { voltageLevel: lv, bayName };
+  });
+  sub.insertBefore(
+    createPowerTransformer(doc, 'ETSL', { name: 'TR1', desc: '132/33/13.2 kV', windings }, 0, 17),
+    sub.querySelector('VoltageLevel')
+  );
+  return { doc, sub };
+}
+
+describe('DSB plantillas de trafo y alimentador', () => {
+  it('nombra el campo de trafo sin puntos', () => {
+    expect(suggestTransformerBayName('TR1', 13.2)).to.equal('TR1_13_2');
+  });
+
+  it('el transformador tiene 3 arrollamientos conectados a nodos existentes', () => {
+    const { sub } = etapa();
+    const pt = sub.querySelector('PowerTransformer')!;
+    expect(pt.querySelectorAll('TransformerWinding')).to.have.length(3);
+    const paths = new Set(Array.from(sub.querySelectorAll('ConnectivityNode')).map(c => c.getAttribute('pathName')));
+    for (const t of Array.from(pt.querySelectorAll('Terminal')))
+      expect(paths.has(t.getAttribute('connectivityNode')), t.getAttribute('connectivityNode')!).to.be.true;
+    // PowerTransformer debe preceder a VoltageLevel (orden del esquema SCL)
+    expect(sub.firstElementChild!.tagName).to.equal('PowerTransformer');
+  });
+
+  it('el campo de trafo tiene interruptor y TC pero no seccionador de línea', () => {
+    const { sub } = etapa();
+    const bay = sub.querySelector('Bay[name="TR1_132"]')!;
+    const types = Array.from(bay.querySelectorAll('ConductingEquipment')).map(e => e.getAttribute('type'));
+    expect(types).to.deep.equal(['DIS', 'CBR', 'CTR']);
+  });
+
+  it('el alimentador no lleva puesta a tierra ni TV', () => {
+    const { doc, sub } = etapa();
+    const vl = sub.querySelector('VoltageLevel[name="J3"]')!;
+    const bay = createBay(doc, { substation: 'ETSL', voltageLevel: 'J3' }, {
+      name: 'F01', busbars: listBusbars(vl), column: suggestColumn(vl), withVT: true, template: 'alimentador',
+    });
+    const types = Array.from(bay.querySelectorAll('ConductingEquipment')).map(e => e.getAttribute('type'));
+    expect(types).to.deep.equal(['DIS', 'CBR', 'CTR', 'DIS']);
+  });
+
+  it('el modelo dibuja el transformador y conecta sus 3 arrollamientos', () => {
+    const { sub } = etapa();
+    const m = buildSldModel(sub);
+    const tr = m.groups.find(g => g.kind === 'transformer')!;
+    expect(tr.prims.filter(p => p.k === 'circle')).to.have.length(3);
+    const wires = m.groups.find(g => g.kind === 'wire')!;
+    // cada arrollamiento aporta una ruta de varios tramos: más que solo las de barra
+    expect(wires.prims.filter(p => p.k === 'line').length).to.be.greaterThan(15);
+    expect(m.groups.filter(g => g.kind === 'bay')).to.have.length(3);
+  });
+});

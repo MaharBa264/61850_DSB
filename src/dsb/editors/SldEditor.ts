@@ -113,6 +113,27 @@ export default class DsbSldPlugin extends LitElement {
       });
   }
 
+  /** Ajusta el zoom para que todo el dibujo entre en pantalla. */
+  private fitView(): void {
+    const svgEl = this.shadowRoot?.querySelector('svg.canvas');
+    if (!svgEl || !this.pz || !this.model.width) return;
+    const r = svgEl.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const scale = Math.min(r.width / (this.model.width + 40), r.height / (this.model.height + 40), 1.5);
+    this.pz.zoomAbs(0, 0, scale);
+    this.pz.moveTo(20 * scale, 20 * scale);
+  }
+
+  private fitted = false;
+
+  protected updated(changed: PropertyValues): void {
+    super.updated(changed);
+    if (!this.fitted && this.model.groups.length) {
+      this.fitted = true;
+      requestAnimationFrame(() => this.fitView());
+    }
+  }
+
   disconnectedCallback(): void {
     super.disconnectedCallback();
     this.pz?.dispose();
@@ -292,7 +313,7 @@ export default class DsbSldPlugin extends LitElement {
             </select>`
           : html`<span>${this.substationName}</span>`}
         <span class="stats">${this.model.groups.filter(g => g.kind === 'equipment' || g.kind === 'transformer').length} equipos</span>
-        <button @click=${() => { this.pz?.zoomAbs(0, 0, 1); this.pz?.moveTo(0, 0); }}>Restablecer vista</button>
+        <button @click=${() => this.fitView()}>Ajustar a pantalla</button>
         <button @click=${() => this.exportAs('svg')}>Exportar SVG</button>
         <button @click=${() => this.exportAs('dxf')}>Exportar DXF</button>
       </div>

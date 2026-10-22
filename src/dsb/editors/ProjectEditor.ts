@@ -16,7 +16,10 @@ import {
 import { newEditEventV2 } from '@compas-oscd/core';
 
 import {
-  createLineBay,
+  BAY_TEMPLATES,
+  BayTemplate,
+  createBay,
+  createPowerTransformer,
   createProjectPrivate,
   createSubstation,
   createVoltageLevel,
@@ -26,9 +29,11 @@ import {
   listBusbars,
   missingRootNamespaces,
   suggestColumn,
+  suggestTransformerBayName,
   suggestVoltageLevelRow,
   validateKV,
   validateName,
+  SXY_NS,
   XMLNS_NS,
 } from '../lib/project-model.js';
 
@@ -65,6 +70,9 @@ export default class DsbProjectPlugin extends LitElement {
   @state() private bayVl = '';
   @state() private bayName = '';
   @state() private bayVT = false;
+  @state() private bayTemplate: BayTemplate = 'linea';
+  @state() private trName = '';
+  @state() private trWindings: string[] = ['', '', ''];
   @state() private message = '';
   @state() private touched = false;
 
@@ -190,18 +198,91 @@ export default class DsbProjectPlugin extends LitElement {
       this.message = 'El nivel de tensión no tiene barras: agregue al menos una.';
       return;
     }
-    const bay = createLineBay(
+    const bay = createBay(
       this.doc,
       { substation: sub.getAttribute('name') ?? '', voltageLevel: this.bayVl },
-      { name, busbars, column: suggestColumn(vl), withVT: this.bayVT }
+      { name, busbars, column: suggestColumn(vl), withVT: this.bayVT, template: this.bayTemplate }
     );
     this.emit(
       [...namespaceEdits(this.doc), { parent: vl, node: bay, reference: null }],
-      `Campo de línea ${name}`
+      `Campo ${name}`
     );
     this.bayName = '';
     this.touched = false;
     this.message = `Campo "${name}" agregado a ${this.bayVl}. Véalo en la pestaña "Diagrama unifilar".`;
+  }
+
+  /** Niveles ordenados de mayor a menor tensión. */
+  private get vlsByVoltage(): Element[] {
+    return [...this.voltageLevels].sort(
+      (a, b) => parseFloat(this.voltage(b)) - parseFloat(this.voltage(a))
+    );
+  }
+
+  private windingLevel(i: number): string {
+    const v = this.trWindings[i];
+    if (v === '-') return '';
+    return v || (this.vlsByVoltage[i]?.getAttribute('name') ?? '');
+  }
+
+  private addTransformer() {
+    const sub = this.substation;
+    if (!sub) return;
+    if (validateName(this.trName)) {
+      this.touched = true;
+      return;
+    }
+    const name = this.trName.trim();
+    if (sub.querySelector(`:scope > PowerTransformer[name="${name}"]`)) {
+      this.message = `Ya existe el transformador "${name}".`;
+      return;
+    }
+    const levels = [0, 1, 2].map(i => this.windingLevel(i)).filter(Boolean);
+    if (levels.length < 2 || new Set(levels).size !== levels.length) {
+      this.message = 'Elija 2 o 3 niveles de tensión distintos para los arrollamientos.';
+      return;
+    }
+    const subName = sub.getAttribute('name') ?? '';
+    const edits: Parameters<typeof newEditEventV2>[0][] = [...namespaceEdits(this.doc)];
+    const windings = [];
+    for (const lv of levels) {
+      const vl = this.voltageLevels.find(v => v.getAttribute('name') === lv)!;
+      const busbars = listBusbars(vl);
+      if (!busbars.length) {
+        this.message = `El nivel ${lv} no tiene barras.`;
+        return;
+      }
+      const bayName = suggestTransformerBayName(name, this.voltage(vl));
+      if (vl.querySelector(`:scope > Bay[name="${bayName}"]`)) {
+        this.message = `Ya existe el campo "${bayName}" en ${lv}.`;
+        return;
+      }
+      edits.push({
+        parent: vl,
+        node: createBay(
+          this.doc,
+          { substation: subName, voltageLevel: lv },
+          { name: bayName, busbars, column: suggestColumn(vl), template: 'trafo' }
+        ),
+        reference: null,
+      });
+      windings.push({ voltageLevel: lv, bayName });
+    }
+    const n = sub.querySelectorAll(':scope > PowerTransformer').length;
+    const mid = this.vlsByVoltage[1] ?? this.vlsByVoltage[0];
+    const row = parseInt(mid.getAttributeNS(SXY_NS, 'y') ?? '1', 10) + 4;
+    const desc = levels
+      .map(lv => this.voltage(this.voltageLevels.find(v => v.getAttribute('name') === lv)!))
+      .join('/') + ' kV';
+    edits.push({
+      parent: sub,
+      node: createPowerTransformer(this.doc, subName, { name, desc, windings }, Math.min(n, 1) * 2, row),
+      reference: sub.querySelector(':scope > VoltageLevel'),
+    });
+    this.emit(edits, `Transformador ${name}`);
+    this.trName = '';
+    this.touched = false;
+    this.message = `Transformador "${name}" agregado con sus campos. Véalo en "Unifilar (DSB)".`;
   }
 
   private voltage(vl: Element): string {
@@ -316,20 +397,29 @@ export default class DsbProjectPlugin extends LitElement {
                             >`
                           )}
                         </mwc-select>
-                        <mwc-select label="Plantilla" value="linea">
-                          <mwc-list-item value="linea" selected>Campo de línea</mwc-list-item>
+                        <mwc-select
+                          label="Plantilla"
+                          .value=${this.bayTemplate}
+                          @selected=${(e: CustomEvent) => {
+                            const v = (e.target as HTMLInputElement).value as BayTemplate;
+                            if (v) this.bayTemplate = v;
+                          }}
+                        >
+                          ${BAY_TEMPLATES.filter(t => t.id !== 'trafo').map(
+                            t => html`<mwc-list-item value=${t.id} ?selected=${t.id === this.bayTemplate}>${t.label}</mwc-list-item>`
+                          )}
                         </mwc-select>
                         <mwc-textfield
                           label="Nombre del campo (ej. Q01)"
                           .value=${this.bayName}
                           @input=${(e: Event) => (this.bayName = (e.target as HTMLInputElement).value)}
                         ></mwc-textfield>
-                        <mwc-formfield label="Con transformador de tensión">
+                        ${this.bayTemplate === 'linea' ? html`<mwc-formfield label="Con transformador de tensión">
                           <mwc-switch
                             ?selected=${this.bayVT}
                             @click=${() => (this.bayVT = !this.bayVT)}
                           ></mwc-switch>
-                        </mwc-formfield>
+                        </mwc-formfield></mwc-formfield>` : ''}
                         <mwc-button outlined label="Agregar campo" @click=${this.addLineBay}></mwc-button>
                       </div>
                       ${this.touched && validateName(this.bayName)
@@ -337,6 +427,46 @@ export default class DsbProjectPlugin extends LitElement {
                         : ''}
                     `
                   : html`<p class="hint">Primero agregue un nivel de tensión.</p>`}
+              </section>
+
+              <section>
+                <h2>Agregar transformador de potencia</h2>
+                ${vls.length >= 2
+                  ? html`
+                      <p class="hint">
+                        Crea el transformador y un campo de transformador (interruptor y TC) en cada nivel elegido.
+                        Cree primero los transformadores, antes que los demás campos.
+                      </p>
+                      <div class="row">
+                        <mwc-textfield
+                          label="Nombre (ej. TR1)"
+                          .value=${this.trName}
+                          @input=${(e: Event) => (this.trName = (e.target as HTMLInputElement).value)}
+                        ></mwc-textfield>
+                        ${[0, 1, 2].map(
+                          i => html`<mwc-select
+                            label=${`Arrollamiento ${i + 1}${i === 2 ? ' (opcional)' : ''}`}
+                            .value=${this.windingLevel(i)}
+                            @selected=${(e: CustomEvent) => {
+                              const v = (e.target as HTMLInputElement).value;
+                              const w = [...this.trWindings];
+                              w[i] = v;
+                              this.trWindings = w;
+                            }}
+                          >
+                            ${i === 2 ? html`<mwc-list-item value="-" ?selected=${!this.windingLevel(i)}>(ninguno)</mwc-list-item>` : ''}
+                            ${this.vlsByVoltage.map(
+                              v => html`<mwc-list-item value=${v.getAttribute('name')!} ?selected=${v.getAttribute('name') === this.windingLevel(i)}>${v.getAttribute('name')} (${this.voltage(v)} kV)</mwc-list-item>`
+                            )}
+                          </mwc-select>`
+                        )}
+                        <mwc-button outlined label="Agregar transformador" @click=${this.addTransformer}></mwc-button>
+                      </div>
+                      ${this.touched && validateName(this.trName)
+                        ? html`<p class="err">${validateName(this.trName)}</p>`
+                        : ''}
+                    `
+                  : html`<p class="hint">Se necesitan al menos 2 niveles de tensión.</p>`}
               </section>
             `
           : html`<p class="hint">Cree el proyecto (nombre obligatorio) para continuar.</p>`}
