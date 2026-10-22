@@ -272,3 +272,51 @@ describe('DSB plantillas de trafo y alimentador', () => {
     expect(corridor.length).to.be.greaterThan(0);
   });
 });
+
+import { voltageEdits } from '../../../src/dsb/lib/sld-edit.js';
+
+function paths(sub: Element) {
+  return new Set(Array.from(sub.querySelectorAll('ConnectivityNode')).map(c => c.getAttribute('pathName')));
+}
+
+describe('DSB renombrado de niveles y subestación', () => {
+  it('renombrar un nivel de tensión actualiza rutas y terminales', () => {
+    const sub = sample(2);
+    apply(renameEdits(sub.querySelector('VoltageLevel')!, 'J33'));
+    const ps = paths(sub);
+    expect(Array.from(ps).every(p => p!.startsWith('ETSL/J33/'))).to.be.true;
+    for (const t of Array.from(sub.querySelectorAll('Terminal'))) {
+      expect(ps.has(t.getAttribute('connectivityNode'))).to.be.true;
+      expect(t.getAttribute('voltageLevelName')).to.equal('J33');
+    }
+  });
+
+  it('renombrar la subestación actualiza todas las rutas', () => {
+    const sub = sample(2);
+    apply(renameEdits(sub, 'CMSV'));
+    const ps = paths(sub);
+    expect(Array.from(ps).every(p => p!.startsWith('CMSV/'))).to.be.true;
+    for (const t of Array.from(sub.querySelectorAll('Terminal'))) {
+      expect(ps.has(t.getAttribute('connectivityNode'))).to.be.true;
+      expect(t.getAttribute('substationName')).to.equal('CMSV');
+    }
+  });
+
+  it('voltageEdits cambia la tensión existente', () => {
+    const sub = sample(1);
+    const vl = sub.querySelector('VoltageLevel')!;
+    const e: any = voltageEdits(sub.ownerDocument, vl, 33);
+    expect(Array.isArray(e)).to.be.true;
+    expect(e[1].textContent).to.equal('33');
+    expect(e[0].attributes.multiplier).to.equal('k');
+  });
+
+  it('voltageEdits crea el Voltage si falta, antes de los campos', () => {
+    const sub = sample(1);
+    const vl = sub.querySelector('VoltageLevel')!;
+    vl.removeChild(vl.querySelector(':scope > Voltage')!);
+    const e: any = voltageEdits(sub.ownerDocument, vl, 20);
+    expect(e.node.textContent).to.equal('20');
+    expect(e.reference?.tagName).to.equal('Bay');
+  });
+});

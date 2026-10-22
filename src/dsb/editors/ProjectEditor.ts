@@ -14,6 +14,7 @@ import {
 } from 'lit-element';
 
 import { newEditEventV2 } from '@compas-oscd/core';
+import { renameEdits, voltageEdits } from '../lib/sld-edit.js';
 
 import {
   bayPackageEdits,
@@ -82,6 +83,10 @@ export default class DsbProjectPlugin extends LitElement {
   @state() private withFunctions = true;
   @state() private trName = '';
   @state() private trWindings: string[] = ['', '', ''];
+  @state() private editVl: Element | null = null;
+  @state() private evName = '';
+  @state() private evKV = '';
+  @state() private evDesc = '';
   @state() private message = '';
   @state() private touched = false;
 
@@ -132,12 +137,10 @@ export default class DsbProjectPlugin extends LitElement {
         reference: this.doc.querySelector(':root > IED, :root > Communication, :root > DataTypeTemplates'),
       });
     } else {
+      if (sub.getAttribute('name') !== info.name) edits.push(renameEdits(sub, info.name));
       edits.push({
         element: sub,
-        attributes: {
-          name: info.name,
-          desc: info.description.trim() || null,
-        },
+        attributes: { desc: info.description.trim() || null },
         attributesNS: {},
       });
       const priv = Array.from(sub.children).find(
@@ -155,6 +158,37 @@ export default class DsbProjectPlugin extends LitElement {
     }
     this.emit(edits, `Proyecto "${info.name}"`);
     this.message = 'Proyecto guardado.';
+  }
+
+  private startEditVl(v: Element) {
+    this.editVl = v;
+    this.evName = v.getAttribute('name') ?? '';
+    this.evKV = this.voltage(v);
+    this.evDesc = v.getAttribute('desc') ?? '';
+    this.touched = false;
+  }
+
+  private saveVl() {
+    const v = this.editVl;
+    if (!v) return;
+    this.touched = true;
+    const kV = parseFloat(this.evKV.replace(',', '.'));
+    const name = this.evName.trim();
+    if (validateName(name) || validateKV(kV)) return;
+    if (this.voltageLevels.some(o => o !== v && o.getAttribute('name') === name)) {
+      this.message = `Ya existe un nivel de tensión "${name}".`;
+      return;
+    }
+    const edits: Parameters<typeof newEditEventV2>[0][] = [];
+    if (name !== v.getAttribute('name')) edits.push(renameEdits(v, name));
+    const desc = this.evDesc.trim();
+    if (desc !== (v.getAttribute('desc') ?? ''))
+      edits.push({ element: v, attributes: { desc: desc || null }, attributesNS: {} });
+    if (kV !== parseFloat(this.voltage(v))) edits.push(voltageEdits(this.doc, v, kV));
+    if (edits.length) this.emit(edits, `Nivel de tensión ${name}`);
+    this.editVl = null;
+    this.touched = false;
+    this.message = edits.length ? `Nivel "${name}" actualizado (${kV} kV).` : '';
   }
 
   private addVoltageLevel() {
@@ -365,11 +399,32 @@ export default class DsbProjectPlugin extends LitElement {
                 ${vls.length
                   ? html`<ul>
                       ${vls.map(
-                        v => html`<li>
+                        v => this.editVl === v
+                          ? html`<li class="row">
+                              <mwc-textfield label="Nombre" .value=${this.evName}
+                                @input=${(e: Event) => (this.evName = (e.target as HTMLInputElement).value)}></mwc-textfield>
+                              <mwc-textfield label="Tensión nominal (kV)" .value=${this.evKV}
+                                @input=${(e: Event) => (this.evKV = (e.target as HTMLInputElement).value)}></mwc-textfield>
+                              <mwc-textfield label="Descripción" .value=${this.evDesc}
+                                @input=${(e: Event) => (this.evDesc = (e.target as HTMLInputElement).value)}></mwc-textfield>
+                              <mwc-button raised label="Aplicar" @click=${this.saveVl}></mwc-button>
+                              <mwc-button label="Cancelar" @click=${() => (this.editVl = null)}></mwc-button>
+                              ${this.touched && (validateName(this.evName.trim()) || validateKV(parseFloat(this.evKV.replace(',', '.'))))
+                                ? html`<p class="err">${validateName(this.evName.trim()) || validateKV(parseFloat(this.evKV.replace(',', '.')))}</p>`
+                                : ''}
+                            </li>`
+                          : html`<li>
                           <b>${v.getAttribute('name')}</b> — ${this.voltage(v)} kV —
                           barras: ${listBusbars(v).join(', ') || 'ninguna'} — campos:
-                          ${v.querySelectorAll(':scope > Bay').length -
-                          listBusbars(v).length}
+                          ${v.querySelectorAll(':scope > Bay').length - listBusbars(v).length}
+                          ${v.getAttribute('desc') ? html`— <i>${v.getAttribute('desc')}</i>` : ''}
+                          <mwc-button dense label="Editar" @click=${() => this.startEditVl(v)}></mwc-button>
+                          ${(() => {
+                            const m = /(\d+(?:[.,]\d+)?)\s*kv/i.exec(v.getAttribute('desc') ?? '');
+                            return m && parseFloat(m[1].replace(',', '.')) !== parseFloat(this.voltage(v))
+                              ? html`<span class="err">La descripción dice ${m[1]} kV pero la tensión es ${this.voltage(v)} kV.</span>`
+                              : '';
+                          })()}
                         </li>`
                       )}
                     </ul>`

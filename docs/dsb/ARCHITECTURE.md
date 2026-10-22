@@ -158,3 +158,9 @@ Decisiones (Abraham): usuarios locales creados por el administrador (AD/LDAP que
 - Los menús de CoMPAS para abrir/guardar (que dependen de su backend) quedan desactivados; se reemplazan por "Proyectos del servidor".
 - Auditoría: login (y fallidos), usuarios, proyectos, visibilidad y permisos, versiones, restauraciones, hitos, bloqueos forzados.
 - Pendiente: comparación de versiones por elementos ("se agregó el campo L3"), exportar un proyecto completo con todas sus versiones, HTTPS, AD/LDAP.
+
+## Archivos importados (ABB PCM600 y similares)
+
+- El unifilar escala las coordenadas `sxy` de los campos con unidad ABB (~480 por celda) y ubica lado a lado los campos que vienen cada uno con su propio lienzo.
+- Los terminales se orientan por la posición de los ConnectivityNode cuando hay coordenadas.
+- Niveles de tensión editables desde "1. Proyecto" (nombre, kV, descripción). Renombrar subestación, nivel o campo actualiza `pathName` de los ConnectivityNode y los Terminal que los referencian (`renameEdits` en `sld-edit.ts`).

@@ -53,6 +53,8 @@ export function symbolPrims(type: string, terminals: number): Prim[] {
         L(m, 0, m, 14), L(m, 38, m, 44), L(m, 38, m - 12, 16), L(m - 6, 14, m + 6, 14),
         L(m - 10, 44, m + 10, 44), L(m - 6, 49, m + 6, 49), L(m - 2, 54, m + 2, 54),
       ];
+    case 'IFL':
+      return [L(m, 0, m, 44), L(m, 54, m - 8, 40), L(m, 54, m + 8, 40), L(m - 8, 40, m + 8, 40)];
     case 'CTR':
       return [L(m, 0, m, 60), C(m, m, 10)];
     case 'VTR':
@@ -72,6 +74,7 @@ export function transformerPrims(windings: number): Prim[] {
   return p;
 }
 
+/** Coordenadas `sxy` tal como están en el archivo (sin escalar). */
 export function relXY(e: Element): { x: number; y: number } {
   return {
     x: parseInt(e.getAttributeNS(SXY_NS, 'x') ?? '0', 10) || 0,
@@ -79,16 +82,99 @@ export function relXY(e: Element): { x: number; y: number } {
   };
 }
 
-/** Coordenadas absolutas en celdas (suma de los ancestros hasta `SCL`). */
+export const hasXY = (e: Element) => e.hasAttributeNS(SXY_NS, 'x') || e.hasAttributeNS(SXY_NS, 'y');
+
+/**
+ * Unidad de las coordenadas de los equipos de un campo. En los proyectos DSB una
+ * unidad es una celda; ABB PCM600 exporta cada campo en su propio lienzo y en
+ * unidades de ~480 por celda (valores como 780, 2220, 4620).
+ */
+export const ABB_UNIT = 480;
+const ABB_THRESHOLD = 400;
+
+let unitCache = new WeakMap<Element, number>();
+let offsets = new WeakMap<Element, { x: number; y: number }>();
+
+export function bayUnit(bay: Element): number {
+  let u = unitCache.get(bay);
+  if (u === undefined) {
+    let max = 0;
+    for (const e of Array.from(bay.querySelectorAll('ConductingEquipment, ConnectivityNode'))) {
+      const r = relXY(e);
+      max = Math.max(max, Math.abs(r.x), Math.abs(r.y));
+    }
+    u = max >= ABB_THRESHOLD ? ABB_UNIT : 1;
+    unitCache.set(bay, u);
+  }
+  return u;
+}
+
+/** Unidades de archivo por celda en las que se expresan las coordenadas de `e`. */
+export function unitOf(e: Element): number {
+  const bay = e.tagName === 'Bay' ? null : e.closest('Bay');
+  return bay ? bayUnit(bay) : 1;
+}
+
+/**
+ * Coordenadas absolutas en celdas (suma de los ancestros hasta `SCL`). Los
+ * elementos dentro de un campo se escalan por la unidad del campo; los campos
+ * importados sin posición propia llevan el desplazamiento de `layoutImportedBays`.
+ */
 export function absXY(e: Element): { x: number; y: number } {
   let x = 0;
   let y = 0;
+  const bay = e.tagName === 'Bay' ? null : e.closest('Bay');
+  const unit = bay ? bayUnit(bay) : 1;
   for (let n: Element | null = e; n && n.tagName !== 'SCL'; n = n.parentElement) {
     const r = relXY(n);
-    x += r.x;
-    y += r.y;
+    const inside = bay !== null && n !== bay && bay.contains(n);
+    x += inside ? r.x / unit : r.x;
+    y += inside ? r.y / unit : r.y;
+    const off = offsets.get(n);
+    if (off) {
+      x += off.x;
+      y += off.y;
+    }
   }
   return { x, y };
+}
+
+/**
+ * Los campos importados (p. ej. ABB PCM600) traen cada uno su propio lienzo y no
+ * tienen posición propia: se acomodan uno al lado del otro dentro de su nivel de
+ * tensión, y los niveles uno debajo del otro.
+ */
+export function layoutImportedBays(sub: Element): void {
+  unitCache = new WeakMap();
+  offsets = new WeakMap();
+  const auto = (bay: Element) => !hasXY(bay) && Array.from(bay.querySelectorAll('ConductingEquipment')).some(hasXY);
+  const nativeEls = [
+    ...Array.from(sub.querySelectorAll(':scope > PowerTransformer')),
+    ...Array.from(sub.querySelectorAll('ConductingEquipment')).filter(e => {
+      const b = e.closest('Bay');
+      return !b || !auto(b);
+    }),
+  ];
+  let cursorY = nativeEls.length ? Math.max(...nativeEls.map(e => absXY(e).y)) + 4 : 1;
+  for (const vl of Array.from(sub.querySelectorAll(':scope > VoltageLevel'))) {
+    const bays = Array.from(vl.querySelectorAll(':scope > Bay')).filter(auto);
+    if (!bays.length) continue;
+    let cursorX = 1;
+    let h = 0;
+    for (const bay of bays) {
+      const pts = Array.from(bay.querySelectorAll('ConductingEquipment, ConnectivityNode'))
+        .filter(hasXY)
+        .map(absXY);
+      const minX = Math.min(...pts.map(q => q.x));
+      const maxX = Math.max(...pts.map(q => q.x));
+      const minY = Math.min(...pts.map(q => q.y));
+      const maxY = Math.max(...pts.map(q => q.y));
+      offsets.set(bay, { x: cursorX - minX, y: cursorY - minY });
+      cursorX += maxX - minX + 3;
+      h = Math.max(h, maxY - minY + 2);
+    }
+    cursorY += h + 3;
+  }
 }
 
 interface Endpoint {
@@ -111,7 +197,17 @@ function idOf(e: Element): string {
 
 /** Construye el modelo de dibujo de una subestación. */
 export function buildSldModel(substation: Element): SldModel {
+  layoutImportedBays(substation);
   const groups: DrawGroup[] = [];
+  const cnByPath = new Map<string, Element>();
+  for (const cn of Array.from(substation.querySelectorAll('ConnectivityNode'))) {
+    const bay = cn.parentElement;
+    const vl = bay?.parentElement;
+    cnByPath.set(
+      cn.getAttribute('pathName') ?? `${substation.getAttribute('name')}/${vl?.getAttribute('name')}/${bay?.getAttribute('name')}/${cn.getAttribute('name')}`,
+      cn
+    );
+  }
   const nodes = new Map<string, Endpoint[]>(); // connectivityNode path -> endpoints
   const busbarByPath = new Map<string, { y: number; name: string; el: Element }>();
   let maxX = 0;
@@ -152,7 +248,14 @@ export function buildSldModel(substation: Element): SldModel {
     prims.push({ k: 'text', x: px + CELL / 2 + 14, y: py + CELL / 2 + 4, t: name, size: 11 });
     groups.push({ id: idOf(ce), kind: 'equipment', element: ce, label: name, type, prims });
     terms.forEach((t, i) => {
-      const top = i === 0;
+      let top = i === 0;
+      // si el archivo da la posición del nodo de conexión, el terminal sale hacia donde está el nodo
+      const cn = cnByPath.get(t.getAttribute('connectivityNode') ?? '');
+      if (cn && hasXY(cn) && hasXY(ce)) {
+        const cy = absXY(cn).y;
+        if (cy < a.y) top = true;
+        else if (cy > a.y) top = false;
+      }
       addEndpoint(t.getAttribute('connectivityNode'), {
         x: px + CELL / 2,
         y: top ? py : py + CELL,
@@ -281,7 +384,7 @@ export function buildSldModel(substation: Element): SldModel {
       kind: 'bay',
       element: bay,
       label: bay.getAttribute('name') ?? '',
-      prims: [{ k: 'text', x, y, t: bay.getAttribute('name') ?? '', size: 14 }],
+      prims: [{ k: 'text', x, y, t: [bay.getAttribute('name'), bay.getAttribute('desc')].filter(Boolean).join(' — '), size: 14 }],
     });
   }
   return { groups, width: maxX + CELL, height: maxY + CELL };
