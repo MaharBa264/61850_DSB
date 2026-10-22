@@ -51,7 +51,31 @@ en cada push a `main`; `deploy/install-rocky.sh` lo publica con un nginx dedicad
 - Archivos de referencia analizados: SCD de ABB PCM600 (ETSL, 32 IEDs) e ICD Saitel. Son datos de la red de EDESAL:
   **no se versionan en el repo**.
 
-## Hoja de ruta (propuesta)
+## Flujo de trabajo objetivo (acordado 2026-10-22)
+
+Principio: **un único modelo SCL que madura**; SSD, SCD y entregables son proyecciones del mismo proyecto.
+Niveles: Especificación (SSD) -> Diseño (IEDs asignados) -> Configuración (SCD). Cada uno se exporta en cualquier momento.
+Lo que SCL no cubre (coordenadas, catálogo, switches, notas) va en elementos `Private` de DSB.
+
+Decisiones del usuario:
+- Unifilar: plantillas de campo con edición libre posterior; simbología IEC; ET típica = 2 trafos 132/33/13,2 kV (3 arrollamientos), 3 campos de línea 132 kV, 5 de 33 kV, 5 de 13,2 kV (~35-50 IEDs).
+- Salidas: DXF (AutoCAD) + PDF/SVG; no hay cajetín/capas estándar de EDESAL (definimos uno propio, configurable).
+- Prioridad: presupuestar (SSD + catálogo) y configurar (SCD) al mismo tiempo.
+- Catálogo de IEDs: sin ICD para muchos modelos; carga manual de funciones y E/S. Sin catálogo ni estándar de switches: catálogo propio, editable, genérico.
+- Red: hoy solo bus de estación (topología por definir); modelar SV/bus de proceso desde el diseño aunque se use a futuro. Direccionamiento y validaciones por subred (L2 independiente).
+
+Etapas:
+| Etapa | Entregable |
+|---|---|
+| A | Proyecto (nombre obligatorio; ubicación, descripción, niveles de tensión) + convención de nomenclatura |
+| B | Editor de unifilar con plantillas de campo, simbología IEC, edición libre; capas/bloques DXF definidos desde el inicio |
+| C | Funciones ANSI->LN por equipo (LNode iedName="None"); exportación SSD y lista de funciones para presupuesto |
+| D | Catálogo de IEDs (manual + ICD) y switches; verificación de capacidad |
+| E | RTU + red asistida (topología, IP/MAC/APPID/VLAN, carga, validación por subred) |
+| F | MMS y GOOSE editables (base: grafo de solo lectura ya hecho) |
+| G | Salidas: SCD, DXF, PDF/SVG, matriz GOOSE, lista de señales, tabla de direccionamiento |
+
+## Hoja de ruta técnica previa
 
 1. [x] Editor GOOSE de solo lectura (grafo IED -> IED, detalle por enlace, enlaces sin GSEControl en rojo)
 2. [ ] Editor GOOSE editable: crear/borrar enlaces escribiendo `ExtRef` mediante el sistema de acciones/undo de OpenSCD
